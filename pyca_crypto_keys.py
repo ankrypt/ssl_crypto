@@ -133,7 +133,7 @@ import ssl_crypto.formats
 
 # Extract/reference the cryptography library settings.  For example:
 # 'ssl_crypto.conf.RSA_CRYPTO_LIBRARY'
-import ssl_crypto.conf
+# import ssl_crypto.conf
 
 # Import routine to process key files containing JSON data.
 import ssl_crypto.util

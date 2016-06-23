@@ -131,8 +131,8 @@ import ssl_crypto.ed25519_keys
 # Import the TUF package and TUF-defined exceptions in __init__.py.
 import ssl_crypto
 
-# Import the cryptography library settings.
-import ssl_crypto.conf
+# # Import the cryptography library settings.
+# import ssl_crypto.conf
 
 # Digest objects needed to generate hashes.
 import ssl_crypto.hash

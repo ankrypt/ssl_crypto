@@ -114,7 +114,7 @@ import ssl_crypto.hash
 import ssl_crypto.formats
 
 # Extract the cryptography library settings.
-import ssl_crypto.conf
+# import ssl_crypto.conf
 
 # Import key files containing json data.
 import ssl_crypto.util

@@ -35,7 +35,6 @@ import logging
 
 # Import ssl_crypto Exceptions.
 import ssl_crypto
-import ssl_crypto.log
 import six
 
 

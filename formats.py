@@ -76,11 +76,12 @@ import re
 import string
 import datetime
 import time
+import six
+
+
+from ..ssl_commons import schema as SCHEMA
 
 import ssl_crypto
-import ssl_crypto.schema as SCHEMA
-
-import six
 
 # Note that in the schema definitions below, the 'SCHEMA.Object' types allow
 # additional keys which are not defined. Thus, any additions to them will be
