@@ -25,7 +25,7 @@
 
   The first section deals with schemas and object matching based on format.
   There are two ways of checking the format of objects.  The first method
-  raises a 'ssl_crypto.FormatError' exception if the match fails and the other
+  raises a 'ssl_commons__exceptions.FormatError' exception if the match fails and the other
   returns a Boolean result.
 
   ssl_crypto.formats.<SCHEMA>.check_match(object)
@@ -38,8 +38,8 @@
              'keyval': {'public': 'public_key',
                         'private': 'private_key'}
 
-  ssl_crypto.formats.RSAKEY_SCHEMA.check_match(rsa_key)
-  ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key)
+  ssl_crypto.formats.RSAKEY_ssl_commons__schema.check_match(rsa_key)
+  ssl_crypto.formats.RSAKEY_ssl_commons__schema.matches(rsa_key)
 
   In this example, if a dict key or dict value is missing or incorrect,
   the match fails.  There are numerous variations of object checking
@@ -79,133 +79,230 @@ import time
 import six
 
 
-from ..ssl_commons import schema as SCHEMA
+from ..ssl_commons import schema as ssl_commons__schema
 
-import ssl_crypto
 
-# Note that in the schema definitions below, the 'SCHEMA.Object' types allow
+# Note that in the schema definitions below, the 'ssl_commons__schema.Object' types allow
 # additional keys which are not defined. Thus, any additions to them will be
 # easily backwards compatible with clients that are already deployed.
 
+# A datetime in 'YYYY-MM-DDTHH:MM:SSZ' ISO 8601 format.  The "Z" zone designator
+# for the zero UTC offset is always used (i.e., a numerical offset is not
+# supported.)  Example: '2015-10-21T13:20:00Z'.  Note:  This is a simple format
+# check, and an ISO8601 string should be fully verified when it is parsed.
+ISO8601_DATETIME_SCHEMA = ssl_commons__schema.RegularExpression(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z')
+
+# A Unix/POSIX time format.  An integer representing the number of seconds
+# since the epoch (January 1, 1970.)  Metadata uses this format for the
+# 'expires' field.  Set 'hi' to the upper timestamp limit (year 2038), the max
+# value of an int.
+UNIX_TIMESTAMP_SCHEMA = ssl_commons__schema.Integer(lo=0, hi=2147483647)
+
 # A hexadecimal value in '23432df87ab..' format.
-HASH_SCHEMA = SCHEMA.RegularExpression(r'[a-fA-F0-9]+')
+HASH_SCHEMA = ssl_commons__schema.RegularExpression(r'[a-fA-F0-9]+')
 
 # A dict in {'sha256': '23432df87ab..', 'sha512': '34324abc34df..', ...} format.
-HASHDICT_SCHEMA = SCHEMA.DictOf(
-  key_schema = SCHEMA.AnyString(),
+HASHDICT_SCHEMA = ssl_commons__schema.DictOf(
+  key_schema = ssl_commons__schema.AnyString(),
   value_schema = HASH_SCHEMA)
 
 # A hexadecimal value in '23432df87ab..' format.
-HEX_SCHEMA = SCHEMA.RegularExpression(r'[a-fA-F0-9]+')
+HEX_SCHEMA = ssl_commons__schema.RegularExpression(r'[a-fA-F0-9]+')
 
 # A key identifier (e.g., a hexadecimal value identifying an RSA key).
 KEYID_SCHEMA = HASH_SCHEMA
 
-# A list of KEYID_SCHEMA.
-KEYIDS_SCHEMA = SCHEMA.ListOf(KEYID_SCHEMA)
+# A list of KEYID_ssl_commons__schema.
+KEYIDS_SCHEMA = ssl_commons__schema.ListOf(KEYID_SCHEMA)
 
 # The method used for a generated signature (e.g., 'RSASSA-PSS').
-SIG_METHOD_SCHEMA = SCHEMA.AnyString()
+SIG_METHOD_SCHEMA = ssl_commons__schema.AnyString()
+
+# A relative file path (e.g., 'metadata/root/').
+RELPATH_SCHEMA = ssl_commons__schema.AnyString()
+RELPATHS_SCHEMA = ssl_commons__schema.ListOf(RELPATH_SCHEMA)
+
+# An absolute path.
+PATH_SCHEMA = ssl_commons__schema.AnyString()
+PATHS_SCHEMA = ssl_commons__schema.ListOf(PATH_SCHEMA)
+
+# Uniform Resource Locator identifier (e.g., 'https://www.updateframework.com/').
+URL_SCHEMA = ssl_commons__schema.AnyString()
+
+# A dictionary holding version information.
+VERSION_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'VERSION_SCHEMA',
+  major = ssl_commons__schema.Integer(lo=0),
+  minor = ssl_commons__schema.Integer(lo=0),
+  fix = ssl_commons__schema.Integer(lo=0))
+
+# An integer representing the numbered version of a metadata file.
+# Must be 1, or greater.
+METADATAVERSION_SCHEMA = ssl_commons__schema.Integer(lo=0)
+
+# An integer representing length.  Must be 0, or greater.
+LENGTH_SCHEMA = ssl_commons__schema.Integer(lo=0)
+
+# An integer representing logger levels, such as logging.CRITICAL (=50).
+# Must be between 0 and 50.
+LOGLEVEL_SCHEMA = ssl_commons__schema.Integer(lo=0, hi=50)
+
+# A string representing a named object.
+NAME_SCHEMA = ssl_commons__schema.AnyString()
+NAMES_SCHEMA = ssl_commons__schema.ListOf(NAME_SCHEMA)
+
+# A byte string representing data.
+DATA_SCHEMA = ssl_commons__schema.AnyBytes()
 
 # Supported hash algorithms.
-HASHALGORITHMS_SCHEMA = SCHEMA.ListOf(SCHEMA.OneOf(
-  [SCHEMA.String('md5'), SCHEMA.String('sha1'),
-   SCHEMA.String('sha224'), SCHEMA.String('sha256'),
-   SCHEMA.String('sha384'), SCHEMA.String('sha512')]))
+HASHALGORITHMS_SCHEMA = ssl_commons__schema.ListOf(ssl_commons__schema.OneOf(
+  [ssl_commons__schema.String('md5'), ssl_commons__schema.String('sha1'),
+   ssl_commons__schema.String('sha224'), ssl_commons__schema.String('sha256'),
+   ssl_commons__schema.String('sha384'), ssl_commons__schema.String('sha512')]))
 
 # The contents of an encrypted TUF key.  Encrypted TUF keys are saved to files
 # in this format.
-ENCRYPTEDKEY_SCHEMA = SCHEMA.AnyBytes()
+ENCRYPTEDKEY_SCHEMA = ssl_commons__schema.AnyBytes()
+
+# A value that is either True or False, on or off, etc.
+BOOLEAN_SCHEMA = ssl_commons__schema.Boolean()
+
+# A role's threshold value (i.e., the minimum number
+# of signatures required to sign a metadata file).
+# Must be 1 and greater.
+THRESHOLD_SCHEMA = ssl_commons__schema.Integer(lo=1)
+
+# A string representing a role's name. 
+ROLENAME_SCHEMA = ssl_commons__schema.AnyString()
 
 # The minimum number of bits for an RSA key.  Must be 2048 bits, or greater
 # (recommended by TUF). Crypto modules like 'pycrypto_keys.py' may set further
 # restrictions on keys (e.g., the number of bits must be a multiple of 256).
 # Recommended RSA key sizes:
 # http://www.emc.com/emc-plus/rsa-labs/historical/twirl-and-rsa-key-size.htm#table1
-RSAKEYBITS_SCHEMA = SCHEMA.Integer(lo=2048)
+RSAKEYBITS_SCHEMA = ssl_commons__schema.Integer(lo=2048)
 
 # The number of hashed bins, or the number of delegated roles.  See
 # delegate_hashed_bins() in 'repository_tool.py' for an example.  Note:
 # Tools may require further restrictions on the number of bins, such
 # as requiring them to be a power of 2. 
-NUMBINS_SCHEMA = SCHEMA.Integer(lo=1)
+NUMBINS_SCHEMA = ssl_commons__schema.Integer(lo=1)
 
 # A PyCrypto signature.
-PYCRYPTOSIGNATURE_SCHEMA = SCHEMA.AnyBytes()
+PYCRYPTOSIGNATURE_SCHEMA = ssl_commons__schema.AnyBytes()
 
 # A pyca-cryptography signature.
-PYCACRYPTOSIGNATURE_SCHEMA = SCHEMA.AnyBytes()
+PYCACRYPTOSIGNATURE_SCHEMA = ssl_commons__schema.AnyBytes()
 
 # An RSA key in PEM format.
-PEMRSA_SCHEMA = SCHEMA.AnyString()
+PEMRSA_SCHEMA = ssl_commons__schema.AnyString()
 
 # A string representing a password.
-PASSWORD_SCHEMA = SCHEMA.AnyString()
+PASSWORD_SCHEMA = ssl_commons__schema.AnyString()
 
 # A list of passwords.
-PASSWORDS_SCHEMA = SCHEMA.ListOf(PASSWORD_SCHEMA)
+PASSWORDS_SCHEMA = ssl_commons__schema.ListOf(PASSWORD_SCHEMA)
 
 # The actual values of a key, as opposed to meta data such as a key type and
 # key identifier ('rsa', 233df889cb).  For RSA keys, the key value is a pair of
 # public and private keys in PEM Format stored as strings.
-KEYVAL_SCHEMA = SCHEMA.Object(
+KEYVAL_SCHEMA = ssl_commons__schema.Object(
   object_name = 'KEYVAL_SCHEMA',
-  public = SCHEMA.AnyString(),
-  private = SCHEMA.Optional(SCHEMA.AnyString()))
+  public = ssl_commons__schema.AnyString(),
+  private = ssl_commons__schema.Optional(ssl_commons__schema.AnyString()))
 
 # Supported TUF key types. 
-KEYTYPE_SCHEMA = SCHEMA.OneOf(
-  [SCHEMA.String('rsa'), SCHEMA.String('ed25519')])
+KEYTYPE_SCHEMA = ssl_commons__schema.OneOf(
+  [ssl_commons__schema.String('rsa'), ssl_commons__schema.String('ed25519')])
 
 # A generic TUF key.  All TUF keys should be saved to metadata files in this
 # format.
-KEY_SCHEMA = SCHEMA.Object(
+KEY_SCHEMA = ssl_commons__schema.Object(
   object_name = 'KEY_SCHEMA',
-  keytype = SCHEMA.AnyString(),
+  keytype = ssl_commons__schema.AnyString(),
   keyval = KEYVAL_SCHEMA)
 
 # A TUF key object.  This schema simplifies validation of keys that may be
 # one of the supported key types.
 # Supported key types: 'rsa', 'ed25519'.
-ANYKEY_SCHEMA = SCHEMA.Object(
+ANYKEY_SCHEMA = ssl_commons__schema.Object(
   object_name = 'ANYKEY_SCHEMA',
   keytype = KEYTYPE_SCHEMA,
   keyid = KEYID_SCHEMA,
   keyval = KEYVAL_SCHEMA)
 
 # A list of TUF key objects.
-ANYKEYLIST_SCHEMA = SCHEMA.ListOf(ANYKEY_SCHEMA)
+ANYKEYLIST_SCHEMA = ssl_commons__schema.ListOf(ANYKEY_SCHEMA)
 
 # An RSA TUF key.
-RSAKEY_SCHEMA = SCHEMA.Object(
+RSAKEY_SCHEMA = ssl_commons__schema.Object(
   object_name = 'RSAKEY_SCHEMA',
-  keytype = SCHEMA.String('rsa'),
+  keytype = ssl_commons__schema.String('rsa'),
   keyid = KEYID_SCHEMA,
   keyval = KEYVAL_SCHEMA)
 
 # An ED25519 raw public key, which must be 32 bytes.
-ED25519PUBLIC_SCHEMA = SCHEMA.LengthBytes(32)
+ED25519PUBLIC_SCHEMA = ssl_commons__schema.LengthBytes(32)
 
 # An ED25519 raw seed key, which must be 32 bytes.  
-ED25519SEED_SCHEMA = SCHEMA.LengthBytes(32)
+ED25519SEED_SCHEMA = ssl_commons__schema.LengthBytes(32)
 
 # An ED25519 raw signature, which must be 64 bytes.  
-ED25519SIGNATURE_SCHEMA = SCHEMA.LengthBytes(64)
+ED25519SIGNATURE_SCHEMA = ssl_commons__schema.LengthBytes(64)
 
 # Required installation libraries expected by the repository tools and other
 # cryptography modules.
-REQUIRED_LIBRARIES_SCHEMA = SCHEMA.ListOf(SCHEMA.OneOf(
-  [SCHEMA.String('general'), SCHEMA.String('ed25519'), SCHEMA.String('rsa')]))
+REQUIRED_LIBRARIES_SCHEMA = ssl_commons__schema.ListOf(ssl_commons__schema.OneOf(
+  [ssl_commons__schema.String('general'), ssl_commons__schema.String('ed25519'), ssl_commons__schema.String('rsa')]))
 
 # An ed25519 TUF key.
-ED25519KEY_SCHEMA = SCHEMA.Object(
+ED25519KEY_SCHEMA = ssl_commons__schema.Object(
   object_name = 'ED25519KEY_SCHEMA',
-  keytype = SCHEMA.String('ed25519'),
+  keytype = ssl_commons__schema.String('ed25519'),
   keyid = KEYID_SCHEMA,
   keyval = KEYVAL_SCHEMA)
 
-# A list of TARGETFILE_SCHEMA.
-TARGETFILES_SCHEMA = SCHEMA.ListOf(TARGETFILE_SCHEMA)
+# Information about target files, like file length and file hash(es).  This
+# schema allows the storage of multiple hashes for the same file (e.g., sha256
+# and sha512 may be computed for the same file and stored).
+FILEINFO_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'FILEINFO_SCHEMA',
+  length = LENGTH_SCHEMA,
+  hashes = HASHDICT_SCHEMA,
+  custom = ssl_commons__schema.Optional(ssl_commons__schema.Object()))
+
+# Version information specified in "snapshot.json" for each role available on
+# the TUF repository.  The 'FILEINFO_SCHEMA' object was previously listed in
+# the snapshot role, but was switched to this object format to reduce the
+# amount of metadata that needs to be downloaded.  Listing version numbers in
+# "snapshot.json" also prevents rollback attacks for roles that clients have
+# not downloaded. 
+VERSIONINFO_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'VERSIONINFO_SCHEMA',
+  version = METADATAVERSION_SCHEMA)
+
+# A dict holding the version information for a particular metadata role.  The
+# dict keys hold the relative file paths, and the dict values the corresponding
+# version numbers.
+VERSIONDICT_SCHEMA = ssl_commons__schema.DictOf(
+  key_schema = RELPATH_SCHEMA,
+  value_schema = VERSIONINFO_SCHEMA)
+
+# A dict holding the information for a particular target / file.  The dict keys
+# hold the relative file paths, and the dict values the corresponding file
+# information.
+FILEDICT_SCHEMA = ssl_commons__schema.DictOf(
+  key_schema = RELPATH_SCHEMA,
+  value_schema = FILEINFO_SCHEMA)
+
+# A dict holding a target file.
+TARGETFILE_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'TARGETFILE_SCHEMA',
+  filepath = RELPATH_SCHEMA,
+  fileinfo = FILEINFO_SCHEMA)
+
+# A list of TARGETFILE_ssl_commons__schema.
+TARGETFILES_SCHEMA = ssl_commons__schema.ListOf(TARGETFILE_SCHEMA)
 
 # A single signature of an object.  Indicates the signature, the ID of the
 # signing key, and the signing method.
@@ -215,35 +312,223 @@ TARGETFILES_SCHEMA = SCHEMA.ListOf(TARGETFILE_SCHEMA)
 # the argument that a key should only be able to sign a file once. However,
 # one can imagine that maybe a key wants to sign multiple times with different
 # signature methods.
-SIGNATURE_SCHEMA = SCHEMA.Object(
+SIGNATURE_SCHEMA = ssl_commons__schema.Object(
   object_name = 'SIGNATURE_SCHEMA',
   keyid = KEYID_SCHEMA,
   method = SIG_METHOD_SCHEMA,
   sig = HEX_SCHEMA)
 
-# List of SIGNATURE_SCHEMA.
-SIGNATURES_SCHEMA = SCHEMA.ListOf(SIGNATURE_SCHEMA)
+# List of SIGNATURE_ssl_commons__schema.
+SIGNATURES_SCHEMA = ssl_commons__schema.ListOf(SIGNATURE_SCHEMA)
+
+# A schema holding the result of checking the signatures of a particular
+# 'SIGNABLE_SCHEMA' role.
+# For example, how many of the signatures for the 'Target' role are
+# valid?  This SCHEMA holds this information.  See 'sig.py' for
+# more information.
+SIGNATURESTATUS_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'SIGNATURESTATUS_SCHEMA',
+  threshold = ssl_commons__schema.Integer(),
+  good_sigs = KEYIDS_SCHEMA,
+  bad_sigs = KEYIDS_SCHEMA,
+  unknown_sigs = KEYIDS_SCHEMA,
+  untrusted_sigs = KEYIDS_SCHEMA,
+  unknown_method_sigs = KEYIDS_SCHEMA)
 
 # A signable object.  Holds the signing role and its associated signatures.
-SIGNABLE_SCHEMA = SCHEMA.Object(
+SIGNABLE_SCHEMA = ssl_commons__schema.Object(
   object_name = 'SIGNABLE_SCHEMA',
-  signed = SCHEMA.Any(),
-  signatures = SCHEMA.ListOf(SIGNATURE_SCHEMA))
+  signed = ssl_commons__schema.Any(),
+  signatures = ssl_commons__schema.ListOf(SIGNATURE_SCHEMA))
 
 # A dict where the dict keys hold a keyid and the dict values a key object.
-KEYDICT_SCHEMA = SCHEMA.DictOf(
+KEYDICT_SCHEMA = ssl_commons__schema.DictOf(
   key_schema = KEYID_SCHEMA,
   value_schema = KEY_SCHEMA)
 
 # The format used by the key database to store keys.  The dict keys hold a key
 # identifier and the dict values any object.  The key database should store
 # key objects in the values (e.g., 'RSAKEY_SCHEMA', 'DSAKEY_SCHEMA').
-KEYDB_SCHEMA = SCHEMA.DictOf(
+KEYDB_SCHEMA = ssl_commons__schema.DictOf(
   key_schema = KEYID_SCHEMA,
-  value_schema = SCHEMA.Any())
+  value_schema = ssl_commons__schema.Any())
+
+# The format of the resulting "scp config dict" after extraction from the
+# push configuration file (i.e., push.cfg).  In the case of a config file
+# utilizing the scp transfer module, it must contain the 'general' and 'scp'
+# sections, where 'general' must contain a 'transfer_module' and
+# 'metadata_path' entry, and 'scp' the 'host', 'user', 'identity_file', and
+# 'remote_directory' entries.  See 'tuf/pushtools/pushtoolslib.py' and
+# 'tuf/pushtools/push.py'.
+SCPCONFIG_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'SCPCONFIG_SCHEMA',
+  general = ssl_commons__schema.Object(
+    object_name = '[general]',
+    transfer_module = ssl_commons__schema.String('scp'),
+    metadata_path = PATH_SCHEMA,
+    targets_directory = PATH_SCHEMA),
+  scp=ssl_commons__schema.Object(
+    object_name = '[scp]',
+    host = URL_SCHEMA,
+    user = NAME_SCHEMA,
+    identity_file = PATH_SCHEMA,
+    remote_directory = PATH_SCHEMA))
+
+# The format of the resulting "receive config dict" after extraction from the
+# receive configuration file (i.e., receive.cfg).  The receive config file
+# must contain a 'general' section, and this section the 'pushroots',
+# 'repository_directory', 'metadata_directory', 'targets_directory', and
+# 'backup_directory' entries.
+# see 'tuf/pushtools/pushtoolslib.py' and 'tuf/pushtools/receive/receive.py'
+RECEIVECONFIG_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'RECEIVECONFIG_SCHEMA', general=ssl_commons__schema.Object(
+    object_name = '[general]',
+    pushroots = ssl_commons__schema.ListOf(PATH_SCHEMA),
+    repository_directory = PATH_SCHEMA,
+    metadata_directory = PATH_SCHEMA,
+    targets_directory = PATH_SCHEMA,
+    backup_directory = PATH_SCHEMA)) 
 
 # A path hash prefix is a hexadecimal string.
 PATH_HASH_PREFIX_SCHEMA = HEX_SCHEMA
 
 # A list of path hash prefixes.
-PATH_HASH_PREFIXES_SCHEMA = SCHEMA.ListOf(PATH_HASH_PREFIX_SCHEMA)
+PATH_HASH_PREFIXES_SCHEMA = ssl_commons__schema.ListOf(PATH_HASH_PREFIX_SCHEMA)
+
+# Role object in {'keyids': [keydids..], 'name': 'ABC', 'threshold': 1,
+# 'paths':[filepaths..]} format.
+ROLE_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'ROLE_SCHEMA',
+  name = ssl_commons__schema.Optional(ROLENAME_SCHEMA),
+  keyids = KEYIDS_SCHEMA,
+  threshold = THRESHOLD_SCHEMA,
+  backtrack = ssl_commons__schema.Optional(BOOLEAN_SCHEMA),
+  paths = ssl_commons__schema.Optional(RELPATHS_SCHEMA),
+  path_hash_prefixes = ssl_commons__schema.Optional(PATH_HASH_PREFIXES_SCHEMA))
+
+# A dict of roles where the dict keys are role names and the dict values holding 
+# the role data/information.
+ROLEDICT_SCHEMA = ssl_commons__schema.DictOf(
+  key_schema = ROLENAME_SCHEMA,
+  value_schema = ROLE_SCHEMA)
+
+# Like ROLEDICT_SCHEMA, except that ROLE_SCHEMA instances are stored in order.
+ROLELIST_SCHEMA = ssl_commons__schema.ListOf(ROLE_SCHEMA)
+
+# The delegated roles of a Targets role (a parent).
+DELEGATIONS_SCHEMA = ssl_commons__schema.Object(
+  keys = KEYDICT_SCHEMA,
+  roles = ROLELIST_SCHEMA)
+
+# Supported compression extension (e.g., 'gz').
+COMPRESSION_SCHEMA = ssl_commons__schema.OneOf([ssl_commons__schema.String(''), ssl_commons__schema.String('gz')])
+
+# List of supported compression extensions.
+COMPRESSIONS_SCHEMA = ssl_commons__schema.ListOf(
+  ssl_commons__schema.OneOf([ssl_commons__schema.String(''), ssl_commons__schema.String('gz')]))
+
+# The fileinfo format of targets specified in the repository and
+# developer tools.  The second element of this list holds custom data about the
+# target, such as file permissions, author(s), last modified, etc.
+CUSTOM_SCHEMA = ssl_commons__schema.Object()
+
+PATH_FILEINFO_SCHEMA = ssl_commons__schema.DictOf(
+  key_schema = RELPATH_SCHEMA,
+  value_schema = CUSTOM_SCHEMA)
+
+# tuf.roledb
+ROLEDB_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'ROLEDB_SCHEMA',
+  keyids = KEYIDS_SCHEMA,
+  signing_keyids = ssl_commons__schema.Optional(KEYIDS_SCHEMA),
+  threshold = THRESHOLD_SCHEMA,
+  version = ssl_commons__schema.Optional(METADATAVERSION_SCHEMA),
+  expires = ssl_commons__schema.Optional(ISO8601_DATETIME_SCHEMA),
+  signatures = ssl_commons__schema.Optional(SIGNATURES_SCHEMA),
+  compressions = ssl_commons__schema.Optional(COMPRESSIONS_SCHEMA),
+  paths = ssl_commons__schema.Optional(ssl_commons__schema.OneOf([RELPATHS_SCHEMA, PATH_FILEINFO_SCHEMA])),
+  path_hash_prefixes = ssl_commons__schema.Optional(PATH_HASH_PREFIXES_SCHEMA),
+  delegations = ssl_commons__schema.Optional(DELEGATIONS_SCHEMA),
+  partial_loaded = ssl_commons__schema.Optional(BOOLEAN_SCHEMA))
+
+# Root role: indicates root keys and top-level roles.
+ROOT_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'ROOT_SCHEMA',
+  _type = ssl_commons__schema.String('Root'),
+  version = METADATAVERSION_SCHEMA,
+  consistent_snapshot = BOOLEAN_SCHEMA,
+  compression_algorithms = COMPRESSIONS_SCHEMA,
+  expires = ISO8601_DATETIME_SCHEMA,
+  keys = KEYDICT_SCHEMA,
+  roles = ROLEDICT_SCHEMA)
+
+# Targets role: Indicates targets and delegates target paths to other roles.
+TARGETS_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'TARGETS_SCHEMA',
+  _type = ssl_commons__schema.String('Targets'),
+  version = METADATAVERSION_SCHEMA,
+  expires = ISO8601_DATETIME_SCHEMA,
+  targets = FILEDICT_SCHEMA,
+  delegations = ssl_commons__schema.Optional(DELEGATIONS_SCHEMA))
+
+# Snapshot role: indicates the latest versions of all metadata (except timestamp).
+SNAPSHOT_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'SNAPSHOT_SCHEMA',
+  _type = ssl_commons__schema.String('Snapshot'),
+  version = METADATAVERSION_SCHEMA,
+  expires = ISO8601_DATETIME_SCHEMA,
+  meta = VERSIONDICT_SCHEMA)
+
+# Timestamp role: indicates the latest version of the snapshot file.
+TIMESTAMP_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'TIMESTAMP_SCHEMA',
+  _type = ssl_commons__schema.String('Timestamp'),
+  version = METADATAVERSION_SCHEMA,
+  expires = ISO8601_DATETIME_SCHEMA,
+  meta = VERSIONDICT_SCHEMA)
+
+# project.cfg file: stores information about the project in a json dictionary
+PROJECT_CFG_SCHEMA = ssl_commons__schema.Object(
+    object_name = 'PROJECT_CFG_SCHEMA',
+    project_name = ssl_commons__schema.AnyString(),
+    layout_type = ssl_commons__schema.OneOf([ssl_commons__schema.String('repo-like'), ssl_commons__schema.String('flat')]),
+    targets_location = PATH_SCHEMA,
+    metadata_location = PATH_SCHEMA,
+    prefix = PATH_SCHEMA,
+    public_keys = KEYDICT_SCHEMA,
+    threshold = ssl_commons__schema.Integer(lo = 0, hi = 2)
+    )
+
+# A schema containing information a repository mirror may require,
+# such as a url, the path of the directory metadata files, etc.
+MIRROR_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'MIRROR_SCHEMA',
+  url_prefix = URL_SCHEMA,
+  metadata_path = RELPATH_SCHEMA,
+  targets_path = RELPATH_SCHEMA,
+  confined_target_dirs = RELPATHS_SCHEMA,
+  custom = ssl_commons__schema.Optional(ssl_commons__schema.Object()))
+
+# A dictionary of mirrors where the dict keys hold the mirror's name and
+# and the dict values the mirror's data (i.e., 'MIRROR_SCHEMA').
+# The repository class of 'updater.py' accepts dictionaries
+# of this type provided by the TUF client.
+MIRRORDICT_SCHEMA = ssl_commons__schema.DictOf(
+  key_schema = ssl_commons__schema.AnyString(),
+  value_schema = MIRROR_SCHEMA)
+
+# A Mirrorlist: indicates all the live mirrors, and what documents they
+# serve.
+MIRRORLIST_SCHEMA = ssl_commons__schema.Object(
+  object_name = 'MIRRORLIST_SCHEMA',
+  _type = ssl_commons__schema.String('Mirrors'),
+  version = METADATAVERSION_SCHEMA,
+  expires = ISO8601_DATETIME_SCHEMA,
+  mirrors = ssl_commons__schema.ListOf(MIRROR_SCHEMA))
+
+# Any of the role schemas (e.g., TIMESTAMP_SCHEMA, SNAPSHOT_SCHEMA, etc.)
+ANYROLE_SCHEMA = ssl_commons__schema.OneOf([ROOT_SCHEMA, TARGETS_SCHEMA, SNAPSHOT_SCHEMA,
+                               TIMESTAMP_SCHEMA, MIRROR_SCHEMA])
+
+
+

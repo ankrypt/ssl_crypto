@@ -28,18 +28,18 @@ from __future__ import unicode_literals
 import unittest
 import logging
 
-import ssl_commons.exceptions
-import ssl_crypto.formats
-import ssl_crypto.keys
-import ssl_crypto.keydb
+from ...ssl_commons import exceptions as ssl_commons__exceptions
+from .. import formats as ssl_crypto__formats
+from .. import keys as ssl_crypto__keys
+from .. import keydb as ssl_crypto__keydb
 
-logger = logging.getLogger('ssl_crypto.test_keydb')
+logger = logging.getLogger('ssl_crypto__test_keydb')
 
 
 # Generate the three keys to use in our test cases.
 KEYS = []
 for junk in range(3):
-  KEYS.append(ssl_crypto.keys.generate_rsa_key(2048))
+  KEYS.append(ssl_crypto__keys.generate_rsa_key(2048))
 
 
 
@@ -50,23 +50,23 @@ class TestKeydb(unittest.TestCase):
 
 
   def tearDown(self):
-    ssl_crypto.keydb.clear_keydb()
+    ssl_crypto__keydb.clear_keydb()
 
 
 
   def test_clear_keydb(self):
     # Test condition ensuring 'clear_keydb()' clears the keydb database.
     # Test the length of the keydb before and after adding a key.
-    self.assertEqual(0, len(ssl_crypto.keydb._keydb_dict))
+    self.assertEqual(0, len(ssl_crypto__keydb._keydb_dict))
     rsakey = KEYS[0]
     keyid = KEYS[0]['keyid']
-    ssl_crypto.keydb._keydb_dict[keyid] = rsakey
-    self.assertEqual(1, len(ssl_crypto.keydb._keydb_dict))
-    ssl_crypto.keydb.clear_keydb()
-    self.assertEqual(0, len(ssl_crypto.keydb._keydb_dict))
+    ssl_crypto__keydb._keydb_dict[keyid] = rsakey
+    self.assertEqual(1, len(ssl_crypto__keydb._keydb_dict))
+    ssl_crypto__keydb.clear_keydb()
+    self.assertEqual(0, len(ssl_crypto__keydb._keydb_dict))
 
     # Test condition for unexpected argument.
-    self.assertRaises(TypeError, ssl_crypto.keydb.clear_keydb, 'unexpected_argument')
+    self.assertRaises(TypeError, ssl_crypto__keydb.clear_keydb, 'unexpected_argument')
 
 
 
@@ -74,26 +74,26 @@ class TestKeydb(unittest.TestCase):
     # Test conditions using valid 'keyid' arguments.
     rsakey = KEYS[0]
     keyid = KEYS[0]['keyid']
-    ssl_crypto.keydb._keydb_dict[keyid] = rsakey
+    ssl_crypto__keydb._keydb_dict[keyid] = rsakey
     rsakey2 = KEYS[1]
     keyid2 = KEYS[1]['keyid']
-    ssl_crypto.keydb._keydb_dict[keyid2] = rsakey2
+    ssl_crypto__keydb._keydb_dict[keyid2] = rsakey2
     
-    self.assertEqual(rsakey, ssl_crypto.keydb.get_key(keyid))
-    self.assertEqual(rsakey2, ssl_crypto.keydb.get_key(keyid2))
-    self.assertNotEqual(rsakey2, ssl_crypto.keydb.get_key(keyid))
-    self.assertNotEqual(rsakey, ssl_crypto.keydb.get_key(keyid2))
+    self.assertEqual(rsakey, ssl_crypto__keydb.get_key(keyid))
+    self.assertEqual(rsakey2, ssl_crypto__keydb.get_key(keyid2))
+    self.assertNotEqual(rsakey2, ssl_crypto__keydb.get_key(keyid))
+    self.assertNotEqual(rsakey, ssl_crypto__keydb.get_key(keyid2))
 
     # Test conditions using invalid arguments.
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.get_key, None)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.get_key, 123)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.get_key, ['123'])
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.get_key, {'keyid': '123'})
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.get_key, '')
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.get_key, None)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.get_key, 123)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.get_key, ['123'])
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.get_key, {'keyid': '123'})
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.get_key, '')
 
     # Test condition using a 'keyid' that has not been added yet.
     keyid3 = KEYS[2]['keyid']
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.get_key, keyid3)
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.get_key, keyid3)
 
     
 
@@ -105,38 +105,38 @@ class TestKeydb(unittest.TestCase):
     keyid2 = KEYS[1]['keyid']
     rsakey3 = KEYS[2]
     keyid3 = KEYS[2]['keyid']
-    self.assertEqual(None, ssl_crypto.keydb.add_key(rsakey, keyid))
-    self.assertEqual(None, ssl_crypto.keydb.add_key(rsakey2, keyid2))
-    self.assertEqual(None, ssl_crypto.keydb.add_key(rsakey3))
+    self.assertEqual(None, ssl_crypto__keydb.add_key(rsakey, keyid))
+    self.assertEqual(None, ssl_crypto__keydb.add_key(rsakey2, keyid2))
+    self.assertEqual(None, ssl_crypto__keydb.add_key(rsakey3))
     
-    self.assertEqual(rsakey, ssl_crypto.keydb.get_key(keyid))
-    self.assertEqual(rsakey2, ssl_crypto.keydb.get_key(keyid2))
-    self.assertEqual(rsakey3, ssl_crypto.keydb.get_key(keyid3))
+    self.assertEqual(rsakey, ssl_crypto__keydb.get_key(keyid))
+    self.assertEqual(rsakey2, ssl_crypto__keydb.get_key(keyid2))
+    self.assertEqual(rsakey3, ssl_crypto__keydb.get_key(keyid3))
 
     # Test conditions using arguments with invalid formats.
-    ssl_crypto.keydb.clear_keydb()
+    ssl_crypto__keydb.clear_keydb()
     rsakey3['keytype'] = 'bad_keytype'
 
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, None, keyid)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, '', keyid)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, ['123'], keyid)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, {'a': 'b'}, keyid)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, rsakey, {'keyid': ''})
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, rsakey, 123)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, rsakey, False)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, rsakey, ['keyid'])
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.add_key, rsakey3, keyid3)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, None, keyid)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, '', keyid)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, ['123'], keyid)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, {'a': 'b'}, keyid)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, rsakey, {'keyid': ''})
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, rsakey, 123)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, rsakey, False)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, rsakey, ['keyid'])
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.add_key, rsakey3, keyid3)
     rsakey3['keytype'] = 'rsa' 
     
     # Test conditions where keyid does not match the rsakey.
-    self.assertRaises(ssl_commons.exceptions.Error, ssl_crypto.keydb.add_key, rsakey, keyid2)
-    self.assertRaises(ssl_commons.exceptions.Error, ssl_crypto.keydb.add_key, rsakey2, keyid)
+    self.assertRaises(ssl_commons__exceptions.Error, ssl_crypto__keydb.add_key, rsakey, keyid2)
+    self.assertRaises(ssl_commons__exceptions.Error, ssl_crypto__keydb.add_key, rsakey2, keyid)
 
     # Test conditions using keyids that have already been added.
-    ssl_crypto.keydb.add_key(rsakey, keyid)
-    ssl_crypto.keydb.add_key(rsakey2, keyid2)
-    self.assertRaises(ssl_commons.exceptions.KeyAlreadyExistsError, ssl_crypto.keydb.add_key, rsakey)
-    self.assertRaises(ssl_commons.exceptions.KeyAlreadyExistsError, ssl_crypto.keydb.add_key, rsakey2)
+    ssl_crypto__keydb.add_key(rsakey, keyid)
+    ssl_crypto__keydb.add_key(rsakey2, keyid2)
+    self.assertRaises(ssl_commons__exceptions.KeyAlreadyExistsError, ssl_crypto__keydb.add_key, rsakey)
+    self.assertRaises(ssl_commons__exceptions.KeyAlreadyExistsError, ssl_crypto__keydb.add_key, rsakey2)
 
 
   
@@ -148,30 +148,30 @@ class TestKeydb(unittest.TestCase):
     keyid2 = KEYS[1]['keyid']
     rsakey3 = KEYS[2]
     keyid3 = KEYS[2]['keyid']
-    ssl_crypto.keydb.add_key(rsakey, keyid)
-    ssl_crypto.keydb.add_key(rsakey2, keyid2)
-    ssl_crypto.keydb.add_key(rsakey3, keyid3)
+    ssl_crypto__keydb.add_key(rsakey, keyid)
+    ssl_crypto__keydb.add_key(rsakey2, keyid2)
+    ssl_crypto__keydb.add_key(rsakey3, keyid3)
 
-    self.assertEqual(None, ssl_crypto.keydb.remove_key(keyid))
-    self.assertEqual(None, ssl_crypto.keydb.remove_key(keyid2))
+    self.assertEqual(None, ssl_crypto__keydb.remove_key(keyid))
+    self.assertEqual(None, ssl_crypto__keydb.remove_key(keyid2))
     
     # Ensure the keys were actually removed.
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.get_key, keyid)
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.get_key, keyid2)
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.get_key, keyid)
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.get_key, keyid2)
 
     # Test for 'keyid' not in keydb.
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.remove_key, keyid)
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.remove_key, keyid)
     
     # Test condition for unknown key argument.
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.remove_key, '1')
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.remove_key, '1')
 
     # Test conditions for arguments with invalid formats.
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.remove_key, None)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.remove_key, '')
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.remove_key, 123)
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.remove_key, ['123'])
-    self.assertRaises(ssl_commons.exceptions.FormatError, ssl_crypto.keydb.remove_key, {'bad': '123'})
-    self.assertRaises(ssl_commons.exceptions.Error, ssl_crypto.keydb.remove_key, rsakey3) 
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.remove_key, None)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.remove_key, '')
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.remove_key, 123)
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.remove_key, ['123'])
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__keydb.remove_key, {'bad': '123'})
+    self.assertRaises(ssl_commons__exceptions.Error, ssl_crypto__keydb.remove_key, rsakey3) 
 
 
 
@@ -191,35 +191,35 @@ class TestKeydb(unittest.TestCase):
     expires = '1985-10-21T01:21:00Z'
     compression_algorithms = ['gz']
     
-    root_metadata = ssl_crypto.formats.RootFile.make_metadata(version,
+    root_metadata = ssl_crypto__formats.RootFile.make_metadata(version,
                                                        expires,
                                                        keydict, roledict,
                                                        consistent_snapshot,
                                                        compression_algorithms)
-    self.assertEqual(None, ssl_crypto.keydb.create_keydb_from_root_metadata(root_metadata))
+    self.assertEqual(None, ssl_crypto__keydb.create_keydb_from_root_metadata(root_metadata))
     
-    ssl_crypto.keydb.create_keydb_from_root_metadata(root_metadata)
+    ssl_crypto__keydb.create_keydb_from_root_metadata(root_metadata)
     
     # Ensure 'keyid' and 'keyid2' were added to the keydb database.
-    self.assertEqual(rsakey, ssl_crypto.keydb.get_key(keyid))
-    self.assertEqual(rsakey2, ssl_crypto.keydb.get_key(keyid2))
+    self.assertEqual(rsakey, ssl_crypto__keydb.get_key(keyid))
+    self.assertEqual(rsakey2, ssl_crypto__keydb.get_key(keyid2))
 
     # Test conditions for arguments with invalid formats.
-    self.assertRaises(ssl_commons.exceptions.FormatError,
-                      ssl_crypto.keydb.create_keydb_from_root_metadata, None)
-    self.assertRaises(ssl_commons.exceptions.FormatError,
-                      ssl_crypto.keydb.create_keydb_from_root_metadata, '')
-    self.assertRaises(ssl_commons.exceptions.FormatError,
-                      ssl_crypto.keydb.create_keydb_from_root_metadata, 123)
-    self.assertRaises(ssl_commons.exceptions.FormatError,
-                      ssl_crypto.keydb.create_keydb_from_root_metadata, ['123'])
-    self.assertRaises(ssl_commons.exceptions.FormatError,
-                      ssl_crypto.keydb.create_keydb_from_root_metadata, {'bad': '123'})
+    self.assertRaises(ssl_commons__exceptions.FormatError,
+                      ssl_crypto__keydb.create_keydb_from_root_metadata, None)
+    self.assertRaises(ssl_commons__exceptions.FormatError,
+                      ssl_crypto__keydb.create_keydb_from_root_metadata, '')
+    self.assertRaises(ssl_commons__exceptions.FormatError,
+                      ssl_crypto__keydb.create_keydb_from_root_metadata, 123)
+    self.assertRaises(ssl_commons__exceptions.FormatError,
+                      ssl_crypto__keydb.create_keydb_from_root_metadata, ['123'])
+    self.assertRaises(ssl_commons__exceptions.FormatError,
+                      ssl_crypto__keydb.create_keydb_from_root_metadata, {'bad': '123'})
 
     # Test conditions for correctly formatted 'root_metadata' arguments but
     # containing incorrect keyids or key types.  In these conditions, the keys
     # should not be added to the keydb database and a warning should be logged.
-    ssl_crypto.keydb.clear_keydb()
+    ssl_crypto__keydb.clear_keydb()
     
     # 'keyid' does not match 'rsakey2'.
     keydict[keyid] = rsakey2
@@ -233,18 +233,18 @@ class TestKeydb(unittest.TestCase):
     expires = '1985-10-21T01:21:00Z'
     compression_algorithms = ['gz']
     
-    root_metadata = ssl_crypto.formats.RootFile.make_metadata(version,
+    root_metadata = ssl_crypto__formats.RootFile.make_metadata(version,
                                                        expires,
                                                        keydict, roledict,
                                                        consistent_snapshot,
                                                        compression_algorithms)
-    self.assertEqual(None, ssl_crypto.keydb.create_keydb_from_root_metadata(root_metadata))
+    self.assertEqual(None, ssl_crypto__keydb.create_keydb_from_root_metadata(root_metadata))
 
     # Ensure only 'keyid2' was added to the keydb database.  'keyid' and
     # 'keyid3' should not be stored.
-    self.assertEqual(rsakey2, ssl_crypto.keydb.get_key(keyid2))
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.get_key, keyid)
-    self.assertRaises(ssl_commons.exceptions.UnknownKeyError, ssl_crypto.keydb.get_key, keyid3)
+    self.assertEqual(rsakey2, ssl_crypto__keydb.get_key(keyid2))
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.get_key, keyid)
+    self.assertRaises(ssl_commons__exceptions.UnknownKeyError, ssl_crypto__keydb.get_key, keyid3)
     rsakey3['keytype'] = 'rsa'
 
 

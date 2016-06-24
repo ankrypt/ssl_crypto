@@ -33,10 +33,9 @@ from __future__ import unicode_literals
 
 import logging
 
-# Import ssl_crypto Exceptions.
-import ssl_crypto
 import six
 
+from ..ssl_commons import exceptions as ssl_commons__exceptions
 
 # Import ssl_crypto logger to log warning messages.
 logger = logging.getLogger('ssl_crypto.hash')
@@ -79,7 +78,7 @@ except ImportError: # pragma: no cover
 # Were we able to import any hash libraries?
 if not _supported_libraries: # pragma: no cover
   # This is fatal, we'll have no way of generating hashes.
-  raise ssl_crypto.Error('Unable to import a hash library from the '
+  raise ssl_commons__exceptions.Error('Unable to import a hash library from the '
                   'following supported list: '+str(_SUPPORTED_LIB_LIST)) 
 
 
@@ -125,8 +124,8 @@ def digest(algorithm=_DEFAULT_HASH_ALGORITHM,
       (e.g., pycrypto, hashlib).
       
   <Exceptions>
-    ssl_crypto.UnsupportedAlgorithmError
-    ssl_crypto.UnsupportedLibraryError
+    ssl_commons__exceptions.UnsupportedAlgorithmError
+    ssl_commons__exceptions.UnsupportedLibraryError
 
   <Side Effects>
     None.
@@ -143,7 +142,7 @@ def digest(algorithm=_DEFAULT_HASH_ALGORITHM,
       return hashlib.new(algorithm)
     
     except ValueError:
-      raise ssl_crypto.UnsupportedAlgorithmError(algorithm)
+      raise ssl_commons__exceptions.UnsupportedAlgorithmError(algorithm)
 
   # Was a pycrypto digest object requested and is it supported?
   elif hash_library == 'pycrypto' and hash_library in _supported_libraries:
@@ -163,11 +162,11 @@ def digest(algorithm=_DEFAULT_HASH_ALGORITHM,
     elif algorithm == 'sha512':
       return SHA512.new()
     else:
-      raise ssl_crypto.UnsupportedAlgorithmError(algorithm)
+      raise ssl_commons__exceptions.UnsupportedAlgorithmError(algorithm)
   
   # The requested hash library is not supported. 
   else:
-    raise ssl_crypto.UnsupportedLibraryError('Unsupported library requested.  '
+    raise ssl_commons__exceptions.UnsupportedLibraryError('Unsupported library requested.  '
                     'Supported hash libraries: '+str(_SUPPORTED_LIB_LIST)) 
 
 
@@ -195,9 +194,9 @@ def digest_fileobject(file_object, algorithm=_DEFAULT_HASH_ALGORITHM,
       (e.g., pycrypto, hashlib).
 
   <Exceptions>
-    ssl_crypto.UnsupportedAlgorithmError
+    ssl_commons__exceptions.UnsupportedAlgorithmError
     
-    ssl_crypto.Error
+    ssl_commons__exceptions.Error
 
   <Side Effects>
     Calls ssl_crypto.hash.digest() to create the actual digest object.
@@ -209,8 +208,8 @@ def digest_fileobject(file_object, algorithm=_DEFAULT_HASH_ALGORITHM,
 
   # Digest object returned whose hash will be updated using 'file_object'.
   # digest() raises:
-  # ssl_crypto.UnsupportedAlgorithmError
-  # ssl_crypto.Error
+  # ssl_commons__exceptions.UnsupportedAlgorithmError
+  # ssl_commons__exceptions.Error
   digest_object = digest(algorithm, hash_library)
 
   # Defensively seek to beginning, as there's no case where we don't
@@ -257,8 +256,8 @@ def digest_filename(filename, algorithm=_DEFAULT_HASH_ALGORITHM,
       (e.g., pycrypto, hashlib).
 
   <Exceptions>
-    ssl_crypto.UnsupportedAlgorithmError
-    ssl_crypto.Error 
+    ssl_commons__exceptions.UnsupportedAlgorithmError
+    ssl_commons__exceptions.Error 
 
   <Side Effects>
     Calls ssl_crypto.hash.digest_fileobject() after opening 'filename'.
@@ -274,8 +273,8 @@ def digest_filename(filename, algorithm=_DEFAULT_HASH_ALGORITHM,
   
   # Create digest_object and update its hash data from file_object.
   # digest_fileobject() raises:
-  # ssl_crypto.UnsupportedAlgorithmError
-  # ssl_crypto.Error
+  # ssl_commons__exceptions.UnsupportedAlgorithmError
+  # ssl_commons__exceptions.Error
   digest_object = digest_fileobject(file_object, algorithm, hash_library)
   
   file_object.close()

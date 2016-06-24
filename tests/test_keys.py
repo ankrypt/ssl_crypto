@@ -29,14 +29,14 @@ from __future__ import unicode_literals
 import unittest
 import logging
 
-import ssl_commons.exceptions
-import ssl_crypto.formats
-import ssl_crypto.keys
+from ...ssl_commons import exceptions as ssl_commons__exceptions
+from .. import formats as ssl_crypto__formats
+from .. import keys as ssl_crypto__keys
 
-logger = logging.getLogger('ssl_crypto.test_keys')
+logger = logging.getLogger('ssl_crypto__test_keys')
 
-KEYS = ssl_crypto.keys
-FORMAT_ERROR_MSG = 'ssl_commons.exceptions.FormatError was raised! Check object\'s format.'
+KEYS = ssl_crypto__keys
+FORMAT_ERROR_MSG = 'ssl_commons__exceptions.FormatError was raised! Check object\'s format.'
 DATA = 'SOME DATA REQUIRING AUTHENTICITY.'
 
 
@@ -54,20 +54,20 @@ class TestKeys(unittest.TestCase):
 
     # Check if the format of the object returned by generate() corresponds
     # to RSAKEY_SCHEMA format.
-    self.assertEqual(None, ssl_crypto.formats.RSAKEY_SCHEMA.check_match(_rsakey_dict),
+    self.assertEqual(None, ssl_crypto__formats.RSAKEY_SCHEMA.check_match(_rsakey_dict),
                      FORMAT_ERROR_MSG)
 
     # Passing a bit value that is <2048 to generate() - should raise 
-    # 'ssl_commons.exceptions.FormatError'.
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.generate_rsa_key, 555)
+    # 'ssl_commons__exceptions.FormatError'.
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.generate_rsa_key, 555)
 
     # Passing a string instead of integer for a bit value.
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.generate_rsa_key, 'bits')
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.generate_rsa_key, 'bits')
 
     # NOTE if random bit value >=2048 (not 4096) is passed generate(bits) 
     # does not raise any errors and returns a valid key.
-    self.assertTrue(ssl_crypto.formats.RSAKEY_SCHEMA.matches(KEYS.generate_rsa_key(2048)))
-    self.assertTrue(ssl_crypto.formats.RSAKEY_SCHEMA.matches(KEYS.generate_rsa_key(4096)))
+    self.assertTrue(ssl_crypto__formats.RSAKEY_SCHEMA.matches(KEYS.generate_rsa_key(2048)))
+    self.assertTrue(ssl_crypto__formats.RSAKEY_SCHEMA.matches(KEYS.generate_rsa_key(4096)))
 
 
 
@@ -79,22 +79,22 @@ class TestKeys(unittest.TestCase):
     # Check if the format of the object returned by this function corresponds
     # to KEY_SCHEMA format.
     self.assertEqual(None, 
-                     ssl_crypto.formats.KEY_SCHEMA.check_match(key_meta), 
+                     ssl_crypto__formats.KEY_SCHEMA.check_match(key_meta), 
                      FORMAT_ERROR_MSG)    
     key_meta = KEYS.format_keyval_to_metadata(keytype, keyvalue, private=True)
 
     # Check if the format of the object returned by this function corresponds
     # to KEY_SCHEMA format.
-    self.assertEqual(None, ssl_crypto.formats.KEY_SCHEMA.check_match(key_meta), 
+    self.assertEqual(None, ssl_crypto__formats.KEY_SCHEMA.check_match(key_meta), 
                      FORMAT_ERROR_MSG) 
     
     # Supplying a 'bad' keyvalue.
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.format_keyval_to_metadata,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.format_keyval_to_metadata,
                       'bad_keytype', keyvalue)
 
     public = keyvalue['public']
     del keyvalue['public']
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.format_keyval_to_metadata,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.format_keyval_to_metadata,
                       keytype, keyvalue)
     keyvalue['public'] = public
   
@@ -105,23 +105,23 @@ class TestKeys(unittest.TestCase):
     rsa_key = KEYS.format_rsakey_from_pem(pem)
     
     # Check if the format of the object returned by this function corresponds
-    # to 'ssl_crypto.formats.RSAKEY_SCHEMA' format.
-    self.assertTrue(ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key)) 
+    # to 'ssl_crypto__formats.RSAKEY_SCHEMA' format.
+    self.assertTrue(ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key)) 
     
     # Verify whitespace is stripped.
     self.assertEqual(rsa_key, KEYS.format_rsakey_from_pem(pem + '\n'))
 
     # Supplying a 'bad_pem' argument.
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.format_rsakey_from_pem, 'bad_pem')
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.format_rsakey_from_pem, 'bad_pem')
 
     # Supplying an improperly formatted PEM.
     # Strip the PEM header and footer.
     pem_header = '-----BEGIN PUBLIC KEY-----'
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.format_rsakey_from_pem,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.format_rsakey_from_pem,
                       pem[len(pem_header):])
                       
     pem_footer = '-----END PUBLIC KEY-----'
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.format_rsakey_from_pem,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.format_rsakey_from_pem,
                       pem[:-len(pem_footer)])
 
 
@@ -137,7 +137,7 @@ class TestKeys(unittest.TestCase):
     # Check if the format of the object returned by this function corresponds
     # to RSAKEY_SCHEMA format.
     self.assertEqual(None, 
-           ssl_crypto.formats.RSAKEY_SCHEMA.check_match(rsakey_dict_from_meta),
+           ssl_crypto__formats.RSAKEY_SCHEMA.check_match(rsakey_dict_from_meta),
            FORMAT_ERROR_MSG)
     self.rsakey_dict['keyid'] = keyid
     
@@ -149,7 +149,7 @@ class TestKeys(unittest.TestCase):
     # Supplying a malformed argument to the function - should get FormatError
     keyval = self.rsakey_dict['keyval']  
     del self.rsakey_dict['keyval']
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.format_metadata_to_key,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.format_metadata_to_key,
                       self.rsakey_dict)   
     self.rsakey_dict['keyval'] = keyval
 
@@ -160,17 +160,17 @@ class TestKeys(unittest.TestCase):
     keyvalue = self.rsakey_dict['keyval']
     
     # Check format of 'keytype'.
-    self.assertEqual(None, ssl_crypto.formats.KEYTYPE_SCHEMA.check_match(keytype),
+    self.assertEqual(None, ssl_crypto__formats.KEYTYPE_SCHEMA.check_match(keytype),
                      FORMAT_ERROR_MSG)
     
     # Check format of 'keyvalue'.
-    self.assertEqual(None, ssl_crypto.formats.KEYVAL_SCHEMA.check_match(keyvalue),
+    self.assertEqual(None, ssl_crypto__formats.KEYVAL_SCHEMA.check_match(keyvalue),
                      FORMAT_ERROR_MSG)
 
     keyid = KEYS._get_keyid(keytype, keyvalue)    
 
     # Check format of 'keyid' - the output of '_get_keyid()' function.
-    self.assertEqual(None, ssl_crypto.formats.KEYID_SCHEMA.check_match(keyid),
+    self.assertEqual(None, ssl_crypto__formats.KEYID_SCHEMA.check_match(keyid),
                      FORMAT_ERROR_MSG)
 
 
@@ -181,10 +181,10 @@ class TestKeys(unittest.TestCase):
     
     # Check format of output.
     self.assertEqual(None, 
-                     ssl_crypto.formats.SIGNATURE_SCHEMA.check_match(rsa_signature),
+                     ssl_crypto__formats.SIGNATURE_SCHEMA.check_match(rsa_signature),
                      FORMAT_ERROR_MSG)
     self.assertEqual(None, 
-                     ssl_crypto.formats.SIGNATURE_SCHEMA.check_match(ed25519_signature),
+                     ssl_crypto__formats.SIGNATURE_SCHEMA.check_match(ed25519_signature),
                      FORMAT_ERROR_MSG)
 
     # Removing private key from 'rsakey_dict' - should raise a TypeError.
@@ -230,13 +230,13 @@ class TestKeys(unittest.TestCase):
     rsa_signature['method'] = 'Biff'
 
     args = (self.rsakey_dict, rsa_signature, DATA)
-    self.assertRaises(ssl_commons.exceptions.UnknownMethodError, KEYS.verify_signature, *args) 
+    self.assertRaises(ssl_commons__exceptions.UnknownMethodError, KEYS.verify_signature, *args) 
 
     # Passing incorrect number of arguments.
     self.assertRaises(TypeError, KEYS.verify_signature)
  
     # Verify that the pure python 'ed25519' base case (triggered if 'pynacl' is
-    # unavailable) is executed in ssl_crypto.keys.verify_signature().
+    # unavailable) is executed in ssl_crypto__keys.verify_signature().
     KEYS._ED25519_CRYPTO_LIBRARY = 'invalid'
     KEYS._available_crypto_libraries = ['invalid']
     verified = KEYS.verify_signature(self.ed25519key_dict, ed25519_signature, DATA)
@@ -253,18 +253,18 @@ class TestKeys(unittest.TestCase):
     private = self.rsakey_dict['keyval']['private']
     passphrase = 'secret'
     encrypted_pem = KEYS.create_rsa_encrypted_pem(private, passphrase)
-    self.assertTrue(ssl_crypto.formats.PEMRSA_SCHEMA.matches(encrypted_pem))
+    self.assertTrue(ssl_crypto__formats.PEMRSA_SCHEMA.matches(encrypted_pem))
 
     # Test improperly formatted arguments.
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.create_rsa_encrypted_pem,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.create_rsa_encrypted_pem,
                       8, passphrase)
     
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.create_rsa_encrypted_pem,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.create_rsa_encrypted_pem,
                       private, 8)
 
     # Test for missing required library.
     KEYS._RSA_CRYPTO_LIBRARY = 'invalid'
-    self.assertRaises(ssl_commons.exceptions.UnsupportedLibraryError, KEYS.create_rsa_encrypted_pem,
+    self.assertRaises(ssl_commons__exceptions.UnsupportedLibraryError, KEYS.create_rsa_encrypted_pem,
                       private, passphrase)
     KEYS._RSA_CRYPTO_LIBRARY = 'pycrypto'
   
@@ -276,18 +276,18 @@ class TestKeys(unittest.TestCase):
     encrypted_key = KEYS.encrypt_key(self.rsakey_dict, passphrase).encode('utf-8')
     decrypted_key = KEYS.decrypt_key(encrypted_key, passphrase)
 
-    self.assertTrue(ssl_crypto.formats.ANYKEY_SCHEMA.matches(decrypted_key))
+    self.assertTrue(ssl_crypto__formats.ANYKEY_SCHEMA.matches(decrypted_key))
     
     # Test improperly formatted arguments.
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.decrypt_key,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.decrypt_key,
                       8, passphrase)
     
-    self.assertRaises(ssl_commons.exceptions.FormatError, KEYS.decrypt_key,
+    self.assertRaises(ssl_commons__exceptions.FormatError, KEYS.decrypt_key,
                       encrypted_key, 8)
 
     # Test for missing required library.
     KEYS._GENERAL_CRYPTO_LIBRARY = 'invalid'
-    self.assertRaises(ssl_commons.exceptions.UnsupportedLibraryError, KEYS.decrypt_key,
+    self.assertRaises(ssl_commons__exceptions.UnsupportedLibraryError, KEYS.decrypt_key,
                       encrypted_key, passphrase)
     KEYS._GENERAL_CRYPTO_LIBRARY = 'pycrypto' 
 

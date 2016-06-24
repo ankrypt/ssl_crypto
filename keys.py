@@ -19,7 +19,7 @@
   is designed to support multiple public-key algorithms, such as RSA and
   Ed25519, and multiple cryptography libraries.  Which cryptography library to
   use is determined by the default, or user modified, values set in
-  'ssl_crypto.conf.py'
+  'settings.py'
   
   https://en.wikipedia.org/wiki/RSA_(algorithm)
   http://ed25519.cr.yp.to/
@@ -90,7 +90,7 @@ _available_crypto_libraries = ['ed25519']
 # Try to import TUF's PyCrypto module (pycrypto_keys.py), which is used here
 # for general-purpose cryptography and RSA.
 try:
-  import ssl_crypto.pycrypto_keys
+  from . import pycrypto_keys as ssl_crypto__pycrypto_keys
   _available_crypto_libraries.append('pycrypto')
 
 except ImportError: # pragma: no cover
@@ -99,7 +99,7 @@ except ImportError: # pragma: no cover
 # Try to import TUF's pyca/Cryptography module (pyca_crypto_keys.py), which is
 # used for general-purpose cryptography and RSA.
 try:
-  import ssl_crypto.pyca_crypto_keys
+  from . import pyca_crypto_keys as ssl_crypto__pyca_crypto_keys
   _available_crypto_libraries.append('pyca-cryptography')
 
 except ImportError: # pragma: no cover
@@ -126,19 +126,17 @@ with warnings.catch_warnings():
 
 # The optimized version of the ed25519 library provided by default is imported
 # regardless of the availability of PyNaCl.
-import ssl_crypto.ed25519_keys
+from . import ed25519_keys as ssl_crypto__ed25519_keys
 
-# Import the TUF package and TUF-defined exceptions in __init__.py.
-import ssl_crypto
+from ..ssl_commons import exceptions as ssl_commons__exceptions
 
-# # Import the cryptography library settings.
-# import ssl_crypto.conf
+from simple_settings import settings
 
 # Digest objects needed to generate hashes.
-import ssl_crypto.hash
+from . import hash as ssl_crypto__hash
 
 # Perform format checks of argument objects.
-import ssl_crypto.formats
+from . import formats as ssl_crypto__format
 
 # The hash algorithm to use in the generation of keyids.
 _KEY_ID_HASH_ALGORITHM = 'sha256'
@@ -152,9 +150,9 @@ _DEFAULT_RSA_KEY_BITS = 3072
 # The crypto libraries to use in 'keys.py', set by default or by the user.
 # The following cryptography libraries are currently supported:
 # ['pycrypto', 'pynacl', 'ed25519', 'pyca-cryptography']
-_RSA_CRYPTO_LIBRARY = ssl_crypto.conf.RSA_CRYPTO_LIBRARY
-_ED25519_CRYPTO_LIBRARY = ssl_crypto.conf.ED25519_CRYPTO_LIBRARY
-_GENERAL_CRYPTO_LIBRARY = ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY
+_RSA_CRYPTO_LIBRARY = settings.RSA_CRYPTO_LIBRARY
+_ED25519_CRYPTO_LIBRARY = settings.ED25519_CRYPTO_LIBRARY
+_GENERAL_CRYPTO_LIBRARY = settings.GENERAL_CRYPTO_LIBRARY
 
 
 def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
@@ -162,7 +160,7 @@ def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
   <Purpose> 
     Generate public and private RSA keys, with modulus length 'bits'.  In
     addition, a keyid identifier for the RSA key is generated.  The object
-    returned conforms to 'ssl_crypto.formats.RSAKEY_SCHEMA' and has the
+    returned conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA' and has the
     form:
     
     {'keytype': 'rsa',
@@ -181,13 +179,13 @@ def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
     import_rsakey_from_encrypted_pem().
     
     >>> rsa_key = generate_rsa_key(bits=2048)
-    >>> ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key)
+    >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key)
     True
     >>> public = rsa_key['keyval']['public']
     >>> private = rsa_key['keyval']['private']
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(public)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(public)
     True
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(private)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(private)
     True
   
   <Arguments>
@@ -196,15 +194,15 @@ def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
       greater, and a multiple of 256.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'bits' is improperly or invalid (i.e., not an integer
+    ssl_commons__exceptions.FormatError, if 'bits' is improperly or invalid (i.e., not an integer
     and not at least 2048).
    
-    ssl_crypto.UnsupportedLibraryError, if any of the cryptography libraries specified
-    in 'ssl_crypto.conf.py' are unsupported or unavailable.
+    ssl_commons__exceptions.UnsupportedLibraryError, if any of the cryptography libraries specified
+    in 'settings.py' are unsupported or unavailable.
 
     ValueError, if an exception occurs after calling the RSA key generation
     routine.  'bits' must be a multiple of 256 if PyCrypto is set via
-    'ssl_crypto.conf.py'.  The 'ValueError' exception is raised by the key generation
+    'settings.py'.  The 'ValueError' exception is raised by the key generation
     function of the cryptography library called.
 
   <Side Effects>
@@ -213,18 +211,18 @@ def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
 
   <Returns>
     A dictionary containing the RSA keys and other identifying information.
-    Conforms to 'ssl_crypto.formats.RSAKEY_SCHEMA'. 
+    Conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA'. 
   """
 
   # Does 'bits' have the correct format?
-  # This check will ensure 'bits' conforms to 'ssl_crypto.formats.RSAKEYBITS_SCHEMA'.
+  # This check will ensure 'bits' conforms to 'ssl_crypto__formats.RSAKEYBITS_SCHEMA'.
   # 'bits' must be an integer object, with a minimum value of 2048.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.RSAKEYBITS_SCHEMA.check_match(bits)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.RSAKEYBITS_SCHEMA.check_match(bits)
 
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified
-  # in 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.RSA_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified
+  # in 'settings', are unsupported or unavailable:
+  # 'settings.RSA_CRYPTO_LIBRARY'. 
   check_crypto_libraries(['rsa'])
 
   # Begin building the RSA key dictionary. 
@@ -236,17 +234,17 @@ def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
   # Generate the public and private RSA keys.  The PyCrypto module performs
   # the actual key generation.  Raise 'ValueError' if 'bits' is less than 1024 
   # or not a multiple of 256, although a 2048-bit minimum is enforced by
-  # ssl_crypto.formats.RSAKEYBITS_SCHEMA.check_match().
+  # ssl_crypto__formats.RSAKEYBITS_SCHEMA.check_match().
   if _RSA_CRYPTO_LIBRARY == 'pycrypto':
-    public, private = ssl_crypto.pycrypto_keys.generate_rsa_public_and_private(bits)
+    public, private = ssl_crypto__pycrypto_keys.generate_rsa_public_and_private(bits)
  
   # Unlike PyCrypto, PyCA Cryptography does not require 'bits' to be a multiple
   # 256.
   elif _RSA_CRYPTO_LIBRARY == 'pyca-cryptography':
-    public, private = ssl_crypto.pyca_crypto_keys.generate_rsa_public_and_private(bits)
+    public, private = ssl_crypto__pyca_crypto_keys.generate_rsa_public_and_private(bits)
   
   else: # pragma: no cover
-    raise ssl_crypto.UnsupportedLibraryError('Invalid crypto'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('Invalid crypto'
       ' library: ' + repr(_RSA_CRYPTO_LIBRARY) + '.') 
     
   # Generate the keyid of the RSA key.  Note: The private key material is
@@ -275,7 +273,7 @@ def generate_ed25519_key():
     Generate public and private ED25519 keys, both of length 32-bytes, although
     they are hexlified to 64 bytes.
     In addition, a keyid identifier generated for the returned ED25519 object.
-    The object returned conforms to 'ssl_crypto.formats.ED25519KEY_SCHEMA' and has the
+    The object returned conforms to 'ssl_crypto__formats.ED25519KEY_SCHEMA' and has the
     form:
     {'keytype': 'ed25519',
      'keyid': 'f30a0870d026980100c0573bd557394f8c1bbd6...',
@@ -286,7 +284,7 @@ def generate_ed25519_key():
     'keyval' field of the returned dictionary.
 
     >>> ed25519_key = generate_ed25519_key()
-    >>> ssl_crypto.formats.ED25519KEY_SCHEMA.matches(ed25519_key)
+    >>> ssl_crypto__formats.ED25519KEY_SCHEMA.matches(ed25519_key)
     True
     >>> len(ed25519_key['keyval']['public'])
     64
@@ -297,7 +295,7 @@ def generate_ed25519_key():
     None.
   
   <Exceptions>
-    ssl_crypto.UnsupportedLibraryError, if an unsupported or unavailable library is
+    ssl_commons__exceptions.UnsupportedLibraryError, if an unsupported or unavailable library is
     detected.
   
   <Side Effects>
@@ -306,12 +304,12 @@ def generate_ed25519_key():
 
   <Returns>
     A dictionary containing the ED25519 keys and other identifying information.
-    Conforms to 'ssl_crypto.formats.ED25519KEY_SCHEMA'. 
+    Conforms to 'ssl_crypto__formats.ED25519KEY_SCHEMA'. 
   """
   
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified
-  # in 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.ED25519_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified
+  # in 'settings', are unsupported or unavailable:
+  # 'settings.ED25519_CRYPTO_LIBRARY'. 
   check_crypto_libraries(['ed25519'])
 
   # Begin building the Ed25519 key dictionary. 
@@ -327,10 +325,10 @@ def generate_ed25519_key():
   # attacks.
   if 'pynacl' in _available_crypto_libraries:
     public, private = \
-      ssl_crypto.ed25519_keys.generate_public_and_private()
+      ssl_crypto__ed25519_keys.generate_public_and_private()
   
   else: # pragma: no cover
-    raise ssl_crypto.UnsupportedLibraryError('The required PyNaCl library'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The required PyNaCl library'
       ' is unavailable.')
 
   # Generate the keyid of the Ed25519 key.  'key_value' corresponds to the
@@ -357,7 +355,7 @@ def generate_ed25519_key():
 def format_keyval_to_metadata(keytype, key_value, private=False):
   """
   <Purpose>
-    Return a dictionary conformant to 'ssl_crypto.formats.KEY_SCHEMA'.
+    Return a dictionary conformant to 'ssl_crypto__formats.KEY_SCHEMA'.
     If 'private' is True, include the private key.  The dictionary
     returned has the form:
     
@@ -379,7 +377,7 @@ def format_keyval_to_metadata(keytype, key_value, private=False):
     >>> keytype = ed25519_key['keytype']
     >>> ed25519_metadata = \
     format_keyval_to_metadata(keytype, key_val, private=True)
-    >>> ssl_crypto.formats.KEY_SCHEMA.matches(ed25519_metadata)
+    >>> ssl_crypto__formats.KEY_SCHEMA.matches(ed25519_metadata)
     True
   
   <Arguments>
@@ -393,32 +391,32 @@ def format_keyval_to_metadata(keytype, key_value, private=False):
       {'public': '...',
        'private': '...'}},
       
-      conformant to 'ssl_crypto.formats.KEYVAL_SCHEMA'.
+      conformant to 'ssl_crypto__formats.KEYVAL_SCHEMA'.
 
     private:
       Indicates if the private key should be included in the dictionary 
       returned.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'key_value' does not conform to 
-    'ssl_crypto.formats.KEYVAL_SCHEMA', or if the private key is not present in
+    ssl_commons__exceptions.FormatError, if 'key_value' does not conform to 
+    'ssl_crypto__formats.KEYVAL_SCHEMA', or if the private key is not present in
     'key_value' if requested by the caller via 'private'.
 
   <Side Effects>
     None.
 
   <Returns>
-    A 'ssl_crypto.formats.KEY_SCHEMA' dictionary.
+    A 'ssl_crypto__formats.KEY_SCHEMA' dictionary.
   """
 
   # Does 'keytype' have the correct format?
   # This check will ensure 'keytype' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.KEYTYPE_SCHEMA.check_match(keytype)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.KEYTYPE_SCHEMA.check_match(keytype)
   
   # Does 'key_value' have the correct format?
-  ssl_crypto.formats.KEYVAL_SCHEMA.check_match(key_value)
+  ssl_crypto__formats.KEYVAL_SCHEMA.check_match(key_value)
 
   if private is True:
     # If the caller requests (via the 'private' argument) to include a private
@@ -426,7 +424,7 @@ def format_keyval_to_metadata(keytype, key_value, private=False):
     # present in 'key_val' (a private key is optional for 'KEYVAL_SCHEMA'
     # dicts).
     if 'private' not in key_value:
-      raise ssl_crypto.FormatError('The required private key is missing'
+      raise ssl_commons__exceptions.FormatError('The required private key is missing'
         ' from: ' + repr(key_value))
     
     else: 
@@ -443,7 +441,7 @@ def format_keyval_to_metadata(keytype, key_value, private=False):
 def format_metadata_to_key(key_metadata):
   """
   <Purpose>
-    Construct a TUF key dictionary (e.g., ssl_crypto.formats.RSAKEY_SCHEMA)
+    Construct a TUF key dictionary (e.g., ssl_crypto__formats.RSAKEY_SCHEMA)
     according to the keytype of 'key_metadata'.  The dict returned by this
     function has the exact format as the dict returned by one of the key
     generations functions, like generate_ed25519_key().  The dict returned
@@ -467,7 +465,7 @@ def format_metadata_to_key(key_metadata):
     >>> ed25519_metadata = \
     format_keyval_to_metadata(keytype, key_val, private=True)
     >>> ed25519_key_2 = format_metadata_to_key(ed25519_metadata)
-    >>> ssl_crypto.formats.ED25519KEY_SCHEMA.matches(ed25519_key_2)
+    >>> ssl_crypto__formats.ED25519KEY_SCHEMA.matches(ed25519_key_2)
     True
     >>> ed25519_key == ed25519_key_2
     True
@@ -475,36 +473,36 @@ def format_metadata_to_key(key_metadata):
   <Arguments>
     key_metadata:
       The TUF key dictionary as stored in Metadata files, conforming to
-      'ssl_crypto.formats.KEY_SCHEMA'.  It has the form:
+      'ssl_crypto__formats.KEY_SCHEMA'.  It has the form:
       
       {'keytype': '...',
        'keyval': {'public': '...',
                   'private': '...'}}
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'key_metadata' does not conform to
-    'ssl_crypto.formats.KEY_SCHEMA'.
+    ssl_commons__exceptions.FormatError, if 'key_metadata' does not conform to
+    'ssl_crypto__formats.KEY_SCHEMA'.
 
   <Side Effects>
     None.
 
   <Returns>
     In the case of an RSA key, a dictionary conformant to
-    'ssl_crypto.formats.RSAKEY_SCHEMA'.
+    'ssl_crypto__formats.RSAKEY_SCHEMA'.
   """
 
   # Does 'key_metadata' have the correct format?
   # This check will ensure 'key_metadata' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.KEY_SCHEMA.check_match(key_metadata)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.KEY_SCHEMA.check_match(key_metadata)
 
   # Construct the dictionary to be returned.
   key_dict = {}
   keytype = key_metadata['keytype']
   key_value = key_metadata['keyval']
 
-  # Convert 'key_value' to 'ssl_crypto.formats.KEY_SCHEMA' and generate its hash
+  # Convert 'key_value' to 'ssl_crypto__formats.KEY_SCHEMA' and generate its hash
   # The hash is in hexdigest form. 
   keyid = _get_keyid(keytype, key_value)
 
@@ -529,11 +527,11 @@ def _get_keyid(keytype, key_value):
 
   # Convert the TUF key to JSON Canonical format, suitable for adding
   # to digest objects.
-  key_update_data = ssl_crypto.formats.encode_canonical(key_meta)
+  key_update_data = ssl_crypto__formats.encode_canonical(key_meta)
 
   # Create a digest object and call update(), using the JSON 
   # canonical format of 'rskey_meta' as the update data.
-  digest_object = ssl_crypto.hash.digest(_KEY_ID_HASH_ALGORITHM)
+  digest_object = ssl_crypto__hash.digest(_KEY_ID_HASH_ALGORITHM)
   digest_object.update(key_update_data.encode('utf-8'))
 
   # 'keyid' becomes the hexadecimal representation of the hash.  
@@ -549,7 +547,7 @@ def check_crypto_libraries(required_libraries):
   """
   <Purpose>
     Public function that ensures the cryptography libraries specified in
-    'ssl_crypto.conf' are supported and available for each 'required_libraries'.
+    'settings' are supported and available for each 'required_libraries'.
 
   <Arguments>
     required_libraries:
@@ -557,11 +555,11 @@ def check_crypto_libraries(required_libraries):
       ['rsa', 'ed25519', 'general'] can be specified.
 
   <Exceptions>
-    ssl_crypto.UnsupportedLibraryError, if the 'required_libraries' and the libraries
-    specified in 'ssl_crypto.conf' are not supported or unavailable.
+    ssl_commons__exceptions.UnsupportedLibraryError, if the 'required_libraries' and the libraries
+    specified in 'settings' are not supported or unavailable.
 
   <Side Effects>
-    Validates the libraries set in 'ssl_crypto.conf'.
+    Validates the libraries set in 'settings'.
 
   <Returns>
     None.
@@ -570,11 +568,11 @@ def check_crypto_libraries(required_libraries):
   # Does 'required_libraries' have the correct format?
   # This check will ensure 'required_libraries' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.REQUIRED_LIBRARIES_SCHEMA.check_match(required_libraries)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.REQUIRED_LIBRARIES_SCHEMA.check_match(required_libraries)
  
-  # The checks below all raise 'ssl_crypto.UnsupportedLibraryError' if the general,
-  # RSA, and Ed25519 crypto libraries specified in 'ssl_crypto.conf.py' are not
+  # The checks below all raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the general,
+  # RSA, and Ed25519 crypto libraries specified in 'settings.py' are not
   # supported or unavailable.  The appropriate error message is added to the
   # exception.  The funcions of this module that depend on user-installed
   # crypto libraries should call this private function to ensure the called
@@ -584,41 +582,41 @@ def check_crypto_libraries(required_libraries):
   
   if 'rsa' in required_libraries and _RSA_CRYPTO_LIBRARY not in \
                                    _SUPPORTED_RSA_CRYPTO_LIBRARIES:
-    raise ssl_crypto.UnsupportedLibraryError('The ' + repr(_RSA_CRYPTO_LIBRARY) +
-      ' crypto library specified in "ssl_crypto.conf.RSA_CRYPTO_LIBRARY" is not '
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The ' + repr(_RSA_CRYPTO_LIBRARY) +
+      ' crypto library specified in "settings.RSA_CRYPTO_LIBRARY" is not '
       ' supported.\nSupported crypto libraries: ' +
       repr(_SUPPORTED_RSA_CRYPTO_LIBRARIES) + '.')
   
   if 'ed25519' in required_libraries and _ED25519_CRYPTO_LIBRARY not in \
                                          _SUPPORTED_ED25519_CRYPTO_LIBRARIES:
-    raise ssl_crypto.UnsupportedLibraryError('The ' + repr(_ED25519_CRYPTO_LIBRARY) +
-      ' crypto library specified in "ssl_crypto.conf.ED25519_CRYPTO_LIBRARY" is not '
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The ' + repr(_ED25519_CRYPTO_LIBRARY) +
+      ' crypto library specified in "settings.ED25519_CRYPTO_LIBRARY" is not '
       ' supported.\nSupported crypto libraries: ' +
       repr(_SUPPORTED_ED25519_CRYPTO_LIBRARIES) + '.')
   
   if 'general' in required_libraries and _GENERAL_CRYPTO_LIBRARY not in \
                                          _SUPPORTED_GENERAL_CRYPTO_LIBRARIES:
-    raise ssl_crypto.UnsupportedLibraryError('The ' + repr(_GENERAL_CRYPTO_LIBRARY) +
-      ' crypto library specified in "ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY" is not'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The ' + repr(_GENERAL_CRYPTO_LIBRARY) +
+      ' crypto library specified in "settings.GENERAL_CRYPTO_LIBRARY" is not'
       ' supported.\nSupported crypto libraries: ' +
       repr(_SUPPORTED_GENERAL_CRYPTO_LIBRARIES) + '.')
 
   if 'rsa' in required_libraries and _RSA_CRYPTO_LIBRARY not in \
                                      _available_crypto_libraries:
-    raise ssl_crypto.UnsupportedLibraryError('The ' + repr(_RSA_CRYPTO_LIBRARY) +
-      ' crypto library specified in "ssl_crypto.conf.RSA_CRYPTO_LIBRARY" could not'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The ' + repr(_RSA_CRYPTO_LIBRARY) +
+      ' crypto library specified in "settings.RSA_CRYPTO_LIBRARY" could not'
       ' be imported.  Available libraries: ' + repr(_available_crypto_libraries))
   
   if 'ed25519' in required_libraries and _ED25519_CRYPTO_LIBRARY not in \
                                          _available_crypto_libraries:
-    raise ssl_crypto.UnsupportedLibraryError('The ' + repr(_ED25519_CRYPTO_LIBRARY) +
-      ' crypto library specified in "ssl_crypto.conf.ED25519_CRYPTO_LIBRARY" could'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The ' + repr(_ED25519_CRYPTO_LIBRARY) +
+      ' crypto library specified in "settings.ED25519_CRYPTO_LIBRARY" could'
       ' not be imported.')
   
   if 'general' in required_libraries and _GENERAL_CRYPTO_LIBRARY not in \
                                          _available_crypto_libraries:
-    raise ssl_crypto.UnsupportedLibraryError('The ' + repr(_GENERAL_CRYPTO_LIBRARY) +
-      ' crypto library specified in "ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY" could'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('The ' + repr(_GENERAL_CRYPTO_LIBRARY) +
+      ' crypto library specified in "settings.GENERAL_CRYPTO_LIBRARY" could'
       ' not be imported.')
 
 
@@ -647,19 +645,19 @@ def create_signature(key_dict, data):
     http://ed25519.cr.yp.to/
 
     Which signature to generate is determined by the key type of 'key_dict'
-    and the available cryptography library specified in 'ssl_crypto.conf'.
+    and the available cryptography library specified in 'settings'.
     
     >>> ed25519_key = generate_ed25519_key()
     >>> data = 'The quick brown fox jumps over the lazy dog'
     >>> signature = create_signature(ed25519_key, data)
-    >>> ssl_crypto.formats.SIGNATURE_SCHEMA.matches(signature)
+    >>> ssl_crypto__formats.SIGNATURE_SCHEMA.matches(signature)
     True
     >>> len(signature['sig'])
     128
     >>> rsa_key = generate_rsa_key(2048)
     >>> data = 'The quick brown fox jumps over the lazy dog'
     >>> signature = create_signature(rsa_key, data)
-    >>> ssl_crypto.formats.SIGNATURE_SCHEMA.matches(signature)
+    >>> ssl_crypto__formats.SIGNATURE_SCHEMA.matches(signature)
     True
 
   <Arguments>
@@ -678,31 +676,31 @@ def create_signature(key_dict, data):
       Data object used by create_signature() to generate the signature.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'key_dict' is improperly formatted.
+    ssl_commons__exceptions.FormatError, if 'key_dict' is improperly formatted.
    
-    ssl_crypto.UnsupportedLibraryError, if an unsupported or unavailable library is
+    ssl_commons__exceptions.UnsupportedLibraryError, if an unsupported or unavailable library is
     detected.
 
     TypeError, if 'key_dict' contains an invalid keytype.
 
   <Side Effects>
-    The cryptography library specified in 'ssl_crypto.conf' called to perform the
+    The cryptography library specified in 'settings' called to perform the
     actual signing routine.
 
   <Returns>
-    A signature dictionary conformant to 'ssl_crypto.format.SIGNATURE_SCHEMA'.
+    A signature dictionary conformant to 'ssl_crypto__format.SIGNATURE_SCHEMA'.
   """
 
   # Does 'key_dict' have the correct format?
   # This check will ensure 'key_dict' has the appropriate number of objects
   # and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
   # The key type of 'key_dict' must be either 'rsa' or 'ed25519'.
-  ssl_crypto.formats.ANYKEY_SCHEMA.check_match(key_dict)
+  ssl_crypto__formats.ANYKEY_SCHEMA.check_match(key_dict)
   
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified
-  # in 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.RSA_CRYPTO_LIBRARY' or 'ssl_crypto.conf.ED25519_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified
+  # in 'settings', are unsupported or unavailable:
+  # 'settings.RSA_CRYPTO_LIBRARY' or 'settings.ED25519_CRYPTO_LIBRARY'. 
   check_crypto_libraries([key_dict['keytype']])
 
   # Signing the 'data' object requires a private key.
@@ -722,32 +720,32 @@ def create_signature(key_dict, data):
   # generated across different platforms and Python key dictionaries.  The
   # resulting 'data' is a string encoded in UTF-8 and compatible with the input
   # expected by the cryptography functions called below.
-  data = ssl_crypto.formats.encode_canonical(data)
+  data = ssl_crypto__formats.encode_canonical(data)
 
   # Call the appropriate cryptography libraries for the supported key types,
   # otherwise raise an exception.
   if keytype == 'rsa':
     if _RSA_CRYPTO_LIBRARY == 'pycrypto':
-      sig, method = ssl_crypto.pycrypto_keys.create_rsa_signature(private, data.encode('utf-8'))
+      sig, method = ssl_crypto__pycrypto_keys.create_rsa_signature(private, data.encode('utf-8'))
    
     elif _RSA_CRYPTO_LIBRARY == 'pyca-cryptography':
-      sig, method = ssl_crypto.pyca_crypto_keys.create_rsa_signature(private, data.encode('utf-8'))
+      sig, method = ssl_crypto__pyca_crypto_keys.create_rsa_signature(private, data.encode('utf-8'))
     
     else: # pragma: no cover
-      raise ssl_crypto.UnsupportedLibraryError('Unsupported'
-        ' "ssl_crypto.conf.RSA_CRYPTO_LIBRARY": ' + repr(_RSA_CRYPTO_LIBRARY) + '.')
+      raise ssl_commons__exceptions.UnsupportedLibraryError('Unsupported'
+        ' "settings.RSA_CRYPTO_LIBRARY": ' + repr(_RSA_CRYPTO_LIBRARY) + '.')
   
   elif keytype == 'ed25519':
     public = binascii.unhexlify(public.encode('utf-8'))
     private = binascii.unhexlify(private.encode('utf-8'))
     if 'pynacl' in _available_crypto_libraries:
-      sig, method = ssl_crypto.ed25519_keys.create_signature(public, private, data.encode('utf-8'))
+      sig, method = ssl_crypto__ed25519_keys.create_signature(public, private, data.encode('utf-8'))
     
     else: # pragma: no cover
-      raise ssl_crypto.UnsupportedLibraryError('The required PyNaCl library'
+      raise ssl_commons__exceptions.UnsupportedLibraryError('The required PyNaCl library'
         ' is unavailable.')
 
-  # 'ssl_crypto.formats.ANYKEY_SCHEMA' should detect invalid key types. 
+  # 'ssl_crypto__formats.ANYKEY_SCHEMA' should detect invalid key types. 
   else: # pragma: no cover
     raise TypeError('Invalid key type.')
     
@@ -805,24 +803,24 @@ def verify_signature(key_dict, signature, data):
        'method': 'method',
        'sig': sig}.
       
-      Conformant to 'ssl_crypto.formats.SIGNATURE_SCHEMA'.
+      Conformant to 'ssl_crypto__formats.SIGNATURE_SCHEMA'.
       
     data:
       Data object used by ssl_crypto.rsa_key.create_signature() to generate
       'signature'.  'data' is needed here to verify the signature.
 
   <Exceptions>
-    ssl_crypto.FormatError, raised if either 'key_dict' or 'signature' are improperly
+    ssl_commons__exceptions.FormatError, raised if either 'key_dict' or 'signature' are improperly
     formatted.
     
-    ssl_crypto.UnsupportedLibraryError, if an unsupported or unavailable library is
+    ssl_commons__exceptions.UnsupportedLibraryError, if an unsupported or unavailable library is
     detected.
     
-    ssl_crypto.UnknownMethodError.  Raised if the signing method used by
+    ssl_commons__exceptions.UnknownMethodError.  Raised if the signing method used by
     'signature' is not one supported.
 
   <Side Effects>
-    The cryptography library specified in 'ssl_crypto.conf' called to do the actual
+    The cryptography library specified in 'settings' called to do the actual
     verification.
 
   <Returns>
@@ -832,11 +830,11 @@ def verify_signature(key_dict, signature, data):
   # Does 'key_dict' have the correct format?
   # This check will ensure 'key_dict' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.ANYKEY_SCHEMA.check_match(key_dict)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.ANYKEY_SCHEMA.check_match(key_dict)
 
   # Does 'signature' have the correct format?
-  ssl_crypto.formats.SIGNATURE_SCHEMA.check_match(signature)
+  ssl_crypto__formats.SIGNATURE_SCHEMA.check_match(signature)
   
   # Using the public key belonging to 'key_dict'
   # (i.e., rsakey_dict['keyval']['public']), verify whether 'signature'
@@ -853,26 +851,26 @@ def verify_signature(key_dict, signature, data):
   # generated across different platforms and Python key dictionaries.  The
   # resulting 'data' is a string encoded in UTF-8 and compatible with the input
   # expected by the cryptography functions called below.
-  data = ssl_crypto.formats.encode_canonical(data).encode('utf-8')
+  data = ssl_crypto__formats.encode_canonical(data).encode('utf-8')
   
   # Call the appropriate cryptography libraries for the supported key types,
   # otherwise raise an exception.
   if keytype == 'rsa':
     if _RSA_CRYPTO_LIBRARY == 'pycrypto':
       if 'pycrypto' not in _available_crypto_libraries: # pragma: no cover
-        raise ssl_crypto.UnsupportedLibraryError('Metadata downloaded from the remote'
+        raise ssl_commons__exceptions.UnsupportedLibraryError('Metadata downloaded from the remote'
           ' repository listed an RSA signature.  "pycrypto" was set'
           ' (in conf.py) to generate RSA signatures, but the PyCrypto library'
           ' is not installed.  \n$ pip install PyCrypto, or pip install'
           ' ssl_crypto[tools], or you can try switching your configuration'
-          ' (ssl_crypto.conf.py) to use pyca-cryptography if that is available instead.')
+          ' (settings.py) to use pyca-cryptography if that is available instead.')
       
       else:
-        valid_signature = ssl_crypto.pycrypto_keys.verify_rsa_signature(sig, method,
+        valid_signature = ssl_crypto__pycrypto_keys.verify_rsa_signature(sig, method,
                                                                  public, data) 
     elif _RSA_CRYPTO_LIBRARY == 'pyca-cryptography': 
       if 'pyca-cryptography' not in _available_crypto_libraries: # pragma: no cover
-        raise ssl_crypto.UnsupportedLibraryError('Metadata downloaded from the remote'
+        raise ssl_commons__exceptions.UnsupportedLibraryError('Metadata downloaded from the remote'
           ' repository listed an RSA signature.  "pyca-cryptography" was set'
           ' (in conf.py) to generate RSA signatures, but the "cryptography"'
           ' library is not installed.  \n$ pip install cryptography, or pip'
@@ -880,28 +878,28 @@ def verify_signature(key_dict, signature, data):
           ' (ssl_crypto/conf.py) to use PyCrypto if that is available instead.')
 
       else:
-        valid_signature = ssl_crypto.pyca_crypto_keys.verify_rsa_signature(sig, method,
+        valid_signature = ssl_crypto__pyca_crypto_keys.verify_rsa_signature(sig, method,
                                                                  public, data) 
     
     else: # pragma: no cover
-      raise ssl_crypto.UnsupportedLibraryError('Unsupported'
-        ' "ssl_crypto.conf.RSA_CRYPTO_LIBRARY": ' + repr(_RSA_CRYPTO_LIBRARY) + '.') 
+      raise ssl_commons__exceptions.UnsupportedLibraryError('Unsupported'
+        ' "settings.RSA_CRYPTO_LIBRARY": ' + repr(_RSA_CRYPTO_LIBRARY) + '.') 
   
   elif keytype == 'ed25519':
     public = binascii.unhexlify(public.encode('utf-8'))
     if _ED25519_CRYPTO_LIBRARY == 'pynacl' or \
                               'pynacl' in _available_crypto_libraries:
-      valid_signature = ssl_crypto.ed25519_keys.verify_signature(public,
+      valid_signature = ssl_crypto__ed25519_keys.verify_signature(public,
                                                           method, sig, data,
                                                           use_pynacl=True)
     
     # Fall back to the optimized pure python implementation of ed25519. 
     else: # pragma: no cover
-      valid_signature = ssl_crypto.ed25519_keys.verify_signature(public,
+      valid_signature = ssl_crypto__ed25519_keys.verify_signature(public,
                                                           method, sig, data,
                                                           use_pynacl=False)
   
-  # 'ssl_crypto.formats.ANYKEY_SCHEMA' should detect invalid key types. 
+  # 'ssl_crypto__formats.ANYKEY_SCHEMA' should detect invalid key types. 
   else: # pragma: no cover
     raise TypeError('Unsupported key type.')
 
@@ -916,7 +914,7 @@ def import_rsakey_from_encrypted_pem(encrypted_pem, password):
   <Purpose> 
     Import the public and private RSA keys stored in 'encrypted_pem'.  In
     addition, a keyid identifier for the RSA key is generated.  The object
-    returned conforms to 'ssl_crypto.formats.RSAKEY_SCHEMA' and has the
+    returned conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA' and has the
     form:
     
     {'keytype': 'rsa',
@@ -931,9 +929,9 @@ def import_rsakey_from_encrypted_pem(encrypted_pem, password):
     >>> passphrase = 'secret'
     >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase) 
     >>> rsa_key2 = import_rsakey_from_encrypted_pem(encrypted_pem, passphrase)
-    >>> ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key)
+    >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key)
     True
-    >>> ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key2)
+    >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key2)
     True
   
   <Arguments>
@@ -946,30 +944,30 @@ def import_rsakey_from_encrypted_pem(encrypted_pem, password):
       encryption key is derived from it.
 
   <Exceptions>
-    ssl_crypto.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
    
-    ssl_crypto.UnsupportedLibraryError, if any of the cryptography libraries specified
-    in 'ssl_crypto.conf.py' are unsupported or unavailable.
+    ssl_commons__exceptions.UnsupportedLibraryError, if any of the cryptography libraries specified
+    in 'settings.py' are unsupported or unavailable.
 
   <Side Effects>
     None.
 
   <Returns>
     A dictionary containing the RSA keys and other identifying information.
-    Conforms to 'ssl_crypto.formats.RSAKEY_SCHEMA'. 
+    Conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA'. 
   """
 
   # Does 'encrypted_pem' have the correct format?
   # This check will ensure 'encrypted_pem' conforms to
-  # 'ssl_crypto.formats.PEMRSA_SCHEMA'.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(encrypted_pem)
+  # 'ssl_crypto__formats.PEMRSA_SCHEMA'.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(encrypted_pem)
 
   # Does 'password' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(password)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(password)
 
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified in
-  # 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.RSA_CRYPTO_LIBRARY' and 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified in
+  # 'settings', are unsupported or unavailable:
+  # 'settings.RSA_CRYPTO_LIBRARY' and 'settings.GENERAL_CRYPTO_LIBRARY'. 
   check_crypto_libraries(['rsa', 'general'])
 
   # Begin building the RSA key dictionary. 
@@ -982,20 +980,20 @@ def import_rsakey_from_encrypted_pem(encrypted_pem, password):
   # actual import operation.
   if _RSA_CRYPTO_LIBRARY == 'pycrypto':
     public, private = \
-      ssl_crypto.pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem(encrypted_pem,
+      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem(encrypted_pem,
                                                                          password)
     public = format_rsakey_from_pem(public)['keyval']['public']
     private = extract_pem(private, private_pem=True)
 
   elif _RSA_CRYPTO_LIBRARY == 'pyca-cryptography':
     public, private = \
-      ssl_crypto.pyca_crypto_keys.create_rsa_public_and_private_from_encrypted_pem(encrypted_pem,
+      ssl_crypto__pyca_crypto_keys.create_rsa_public_and_private_from_encrypted_pem(encrypted_pem,
                                                                          password)
     public = format_rsakey_from_pem(public)['keyval']['public']
     private = extract_pem(private, private_pem=True)
   
   else: #pragma: no cover
-    raise ssl_crypto.UnsupportedLibraryError('Invalid crypto'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('Invalid crypto'
       ' library: ' + repr(_RSA_CRYPTO_LIBRARY) + '.') 
     
   # Generate the keyid of the RSA key.  'key_value' corresponds to the
@@ -1024,7 +1022,7 @@ def format_rsakey_from_pem(pem):
   <Purpose> 
     Generate an RSA key object from 'pem'.  In addition, a keyid identifier for
     the RSA key is generated.  The object returned conforms to
-    'ssl_crypto.formats.RSAKEY_SCHEMA' and has the form:
+    'ssl_crypto__formats.RSAKEY_SCHEMA' and has the form:
     
     {'keytype': 'rsa',
      'keyid': keyid,
@@ -1037,9 +1035,9 @@ def format_rsakey_from_pem(pem):
     >>> public = rsa_key['keyval']['public']
     >>> rsa_key['keyval']['private'] = ''
     >>> rsa_key2 = format_rsakey_from_pem(public)
-    >>> ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key)
+    >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key)
     True
-    >>> ssl_crypto.formats.RSAKEY_SCHEMA.matches(rsa_key2)
+    >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key2)
     True
 
   <Arguments>
@@ -1047,7 +1045,7 @@ def format_rsakey_from_pem(pem):
       A string in PEM format.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'pem' is improperly formatted.
+    ssl_commons__exceptions.FormatError, if 'pem' is improperly formatted.
 
   <Side Effects>
     Only the public portion of the PEM is extracted.  Leading or trailing
@@ -1056,14 +1054,14 @@ def format_rsakey_from_pem(pem):
 
   <Returns>
     A dictionary containing the RSA keys and other identifying information.
-    Conforms to 'ssl_crypto.formats.RSAKEY_SCHEMA'. 
+    Conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA'. 
   """
   
   # Does 'pem' have the correct format?
   # This check will ensure arguments has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(pem)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(pem)
   
   # Ensure the PEM string has a valid header and footer.  Although a simple
   # validation of 'pem' is performed here, a fully valid PEM string is needed
@@ -1115,7 +1113,7 @@ def extract_pem(pem, private_pem=False):
       A string in PEM format.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'pem' is improperly formatted.
+    ssl_commons__exceptions.FormatError, if 'pem' is improperly formatted.
 
   <Side Effects>
     Only the public and private portion of the PEM is extracted.  Leading or
@@ -1145,11 +1143,11 @@ def extract_pem(pem, private_pem=False):
   except ValueError:
     # Be careful not to print private key material in exception message. 
     if not private_pem:  
-      raise ssl_crypto.FormatError('Required PEM header ' + repr(pem_header) + '\n not'
+      raise ssl_commons__exceptions.FormatError('Required PEM header ' + repr(pem_header) + '\n not'
         ' found in PEM string: ' + repr(pem))
     
     else:
-      raise ssl_crypto.FormatError('Required PEM header ' + repr(pem_header) + '\n not'
+      raise ssl_commons__exceptions.FormatError('Required PEM header ' + repr(pem_header) + '\n not'
         ' found in private PEM string.')
   
   try:
@@ -1159,11 +1157,11 @@ def extract_pem(pem, private_pem=False):
   except ValueError:
     # Be careful not to print private key material in exception message.
     if not private_pem:  
-      raise ssl_crypto.FormatError('Required PEM footer ' + repr(pem_footer) + '\n not'
+      raise ssl_commons__exceptions.FormatError('Required PEM footer ' + repr(pem_footer) + '\n not'
         ' found in PEM string ' + repr(pem))
 
     else:
-      raise ssl_crypto.FormatError('Required PEM footer ' + repr(pem_footer) + '\n not'
+      raise ssl_commons__exceptions.FormatError('Required PEM footer ' + repr(pem_footer) + '\n not'
         ' found in private PEM string.')
   
   # Extract only the public portion of 'pem'.  Leading or trailing whitespace
@@ -1193,7 +1191,7 @@ def encrypt_key(key_object, password):
     Derivation Function 1 (PBKF1) + MD5 to strengthen 'password', encrypted
     TUF keys use AES-256-CTR-Mode and passwords strengthened with
     PBKDF2-HMAC-SHA256 (100K iterations by default, but may be overriden in
-    'ssl_crypto.conf.PBKDF2_ITERATIONS' by the user).
+    'settings.PBKDF2_ITERATIONS' by the user).
 
     http://en.wikipedia.org/wiki/Advanced_Encryption_Standard
     http://en.wikipedia.org/wiki/CTR_mode#Counter_.28CTR.29
@@ -1202,13 +1200,13 @@ def encrypt_key(key_object, password):
     >>> ed25519_key = generate_ed25519_key()
     >>> password = 'secret'
     >>> encrypted_key = encrypt_key(ed25519_key, password).encode('utf-8')
-    >>> ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA.matches(encrypted_key)
+    >>> ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA.matches(encrypted_key)
     True
 
   <Arguments>
     key_object:
       A TUF key (containing also the private key portion) of the form
-      'ssl_crypto.formats.ANYKEY_SCHEMA'
+      'ssl_crypto__formats.ANYKEY_SCHEMA'
 
     password:
       The password, or passphrase, to encrypt the private part of the RSA
@@ -1216,33 +1214,33 @@ def encrypt_key(key_object, password):
       encryption key is derived from it. 
 
   <Exceptions>
-    ssl_crypto.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
 
-    ssl_crypto.CryptoError, if 'key_object' cannot be encrypted.
+    ssl_commons__exceptions.CryptoError, if 'key_object' cannot be encrypted.
 
-    ssl_crypto.UnsupportedLibraryError, if the general-purpose cryptography library
-    specified in 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY' is unsupported.
+    ssl_commons__exceptions.UnsupportedLibraryError, if the general-purpose cryptography library
+    specified in 'settings.GENERAL_CRYPTO_LIBRARY' is unsupported.
 
   <Side Effects>
     Perform crytographic operations using the library specified in
-    'ssl_crypto.formats.GENERAL_CRYPTO_LIBRARY' and 'password'.
+    'ssl_crypto__formats.GENERAL_CRYPTO_LIBRARY' and 'password'.
 
   <Returns>
-    An encrypted string of the form: 'ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA'.
+    An encrypted string of the form: 'ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA'.
   """
   
   # Does 'key_object' have the correct format?
   # This check will ensure 'key_object' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.ANYKEY_SCHEMA.check_match(key_object)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.ANYKEY_SCHEMA.check_match(key_object)
   
   # Does 'password' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(password)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(password)
   
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified in
-  # 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified in
+  # 'settings', are unsupported or unavailable:
+  # 'settings.GENERAL_CRYPTO_LIBRARY'. 
   check_crypto_libraries(['general'])
 
   # Encrypted string of 'key_object'.  The encrypted string may be safely saved
@@ -1251,18 +1249,18 @@ def encrypt_key(key_object, password):
 
   # Generate an encrypted string of 'key_object' using AES-256-CTR-Mode, where
   # 'password' is strengthened with PBKDF2-HMAC-SHA256.  Ensure the general-
-  # purpose library specified in 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY' is supported.
+  # purpose library specified in 'settings.GENERAL_CRYPTO_LIBRARY' is supported.
   if _GENERAL_CRYPTO_LIBRARY == 'pycrypto':
     encrypted_key = \
-      ssl_crypto.pycrypto_keys.encrypt_key(key_object, password)
+      ssl_crypto__pycrypto_keys.encrypt_key(key_object, password)
   
   elif _GENERAL_CRYPTO_LIBRARY == 'pyca-cryptography':
     encrypted_key = \
-      ssl_crypto.pyca_crypto_keys.encrypt_key(key_object, password)
+      ssl_crypto__pyca_crypto_keys.encrypt_key(key_object, password)
  
   # check_crypto_libraries() should have fully verified _GENERAL_CRYPTO_LIBRARY.
   else: # pragma: no cover
-    raise ssl_crypto.UnsupportedLibraryError('Invalid crypto library:'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('Invalid crypto library:'
       ' ' + repr(_GENERAL_CRYPTO_LIBRARY) + '.') 
 
   return encrypted_key
@@ -1287,7 +1285,7 @@ def decrypt_key(encrypted_key, passphrase):
     Derivation Function 1 (PBKF1) + MD5 to strengthen 'password', encrypted
     TUF keys use AES-256-CTR-Mode and passwords strengthened with
     PBKDF2-HMAC-SHA256 (100K iterations be default, but may be overriden in
-    'ssl_crypto.conf.py' by the user).
+    'settings.py' by the user).
 
     http://en.wikipedia.org/wiki/Advanced_Encryption_Standard
     http://en.wikipedia.org/wiki/CTR_mode#Counter_.28CTR.29
@@ -1297,7 +1295,7 @@ def decrypt_key(encrypted_key, passphrase):
     >>> password = 'secret'
     >>> encrypted_key = encrypt_key(ed25519_key, password)
     >>> decrypted_key = decrypt_key(encrypted_key.encode('utf-8'), password)
-    >>> ssl_crypto.formats.ANYKEY_SCHEMA.matches(decrypted_key)
+    >>> ssl_crypto__formats.ANYKEY_SCHEMA.matches(decrypted_key)
     True
     >>> decrypted_key == ed25519_key
     True
@@ -1306,7 +1304,7 @@ def decrypt_key(encrypted_key, passphrase):
     encrypted_key:
       An encrypted TUF key (additional data is also included, such as salt,
       number of password iterations used for the derived encryption key, etc)
-      of the form 'ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA'.  'encrypted_key' should
+      of the form 'ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA'.  'encrypted_key' should
       have been generated with encrypted_key().
 
     password:
@@ -1316,34 +1314,34 @@ def decrypt_key(encrypted_key, passphrase):
       re-deriving the encryption key.
 
   <Exceptions>
-    ssl_crypto.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
 
-    ssl_crypto.CryptoError, if 'encrypted_key' cannot be decrypted.
+    ssl_commons__exceptions.CryptoError, if 'encrypted_key' cannot be decrypted.
 
-    ssl_crypto.UnsupportedLibraryError, if the general-purpose cryptography library
-    specified in 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY' is unsupported.
+    ssl_commons__exceptions.UnsupportedLibraryError, if the general-purpose cryptography library
+    specified in 'settings.GENERAL_CRYPTO_LIBRARY' is unsupported.
 
   <Side Effects>
     Perform crytographic operations using the library specified in
-    'ssl_crypto.formats.GENERAL_CRYPTO_LIBRARY' and 'password'.
+    'ssl_crypto__formats.GENERAL_CRYPTO_LIBRARY' and 'password'.
 
   <Returns>
-    A TUF key object of the form: 'ssl_crypto.formats.ANYKEY_SCHEMA' (e.g.,
+    A TUF key object of the form: 'ssl_crypto__formats.ANYKEY_SCHEMA' (e.g.,
     RSAKEY_SCHEMA, ED25519KEY_SCHEMA).
   """
   
   # Does 'encrypted_key' have the correct format?
   # This check ensures 'encrypted_key' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA.check_match(encrypted_key)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA.check_match(encrypted_key)
   
   # Does 'passphrase' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(passphrase)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(passphrase)
   
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified in
-  # 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified in
+  # 'settings', are unsupported or unavailable:
+  # 'settings.GENERAL_CRYPTO_LIBRARY'. 
   check_crypto_libraries(['general'])
 
   # Store and return the decrypted key object.
@@ -1353,18 +1351,18 @@ def decrypt_key(encrypted_key, passphrase):
   # encrypt_key() generates an encrypted string of the TUF key object using
   # AES-256-CTR-Mode, where 'password' is strengthened with PBKDF2-HMAC-SHA256.
   # Ensure the general-purpose library specified in
-  # 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY' is supported.
+  # 'settings.GENERAL_CRYPTO_LIBRARY' is supported.
   if _GENERAL_CRYPTO_LIBRARY == 'pycrypto':
     key_object = \
-      ssl_crypto.pycrypto_keys.decrypt_key(encrypted_key, passphrase)
+      ssl_crypto__pycrypto_keys.decrypt_key(encrypted_key, passphrase)
   
   elif _GENERAL_CRYPTO_LIBRARY == 'pyca-cryptography':
     key_object = \
-      ssl_crypto.pyca_crypto_keys.decrypt_key(encrypted_key, passphrase)
+      ssl_crypto__pyca_crypto_keys.decrypt_key(encrypted_key, passphrase)
   
   # check_crypto_libraries() should have fully verified _GENERAL_CRYPTO_LIBRARY.
   else: # pragma: no cover
-    raise ssl_crypto.UnsupportedLibraryError('Invalid crypto library:'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('Invalid crypto library:'
       ' ' + repr(_GENERAL_CRYPTO_LIBRARY) + '.')
 
   # The corresponding encrypt_key() encrypts and stores key objects in
@@ -1393,7 +1391,7 @@ def create_rsa_encrypted_pem(private_key, passphrase):
   >>> private = rsa_key['keyval']['private']
   >>> passphrase = 'secret'
   >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase)
-  >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(encrypted_pem)
+  >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(encrypted_pem)
   True
 
   <Arguments>
@@ -1406,9 +1404,9 @@ def create_rsa_encrypted_pem(private_key, passphrase):
   encryption key is derived from it.
 
   <Exceptions>
-  ssl_crypto.FormatError, if the arguments are improperly formatted.
+  ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
 
-  ssl_crypto.CryptoError, if an RSA key in encrypted PEM format cannot be created.
+  ssl_commons__exceptions.CryptoError, if an RSA key in encrypted PEM format cannot be created.
 
   TypeError, 'private_key' is unset.
 
@@ -1418,21 +1416,21 @@ def create_rsa_encrypted_pem(private_key, passphrase):
 
   <Returns>
   A string in PEM format, where the private RSA key is encrypted.
-  Conforms to 'ssl_crypto.formats.PEMRSA_SCHEMA'.
+  Conforms to 'ssl_crypto__formats.PEMRSA_SCHEMA'.
   """
     
   # Does 'private_key' have the correct format?
   # This check will ensure 'private_key' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(private_key)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(private_key)
 
   # Does 'passphrase' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(passphrase)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(passphrase)
   
-  # Raise 'ssl_crypto.UnsupportedLibraryError' if the following libraries, specified in
-  # 'ssl_crypto.conf', are unsupported or unavailable:
-  # 'ssl_crypto.conf.GENERAL_CRYPTO_LIBRARY' and 'ssl_crypto.conf.RSA_CRYPTO_LIBRARY'.
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified in
+  # 'settings', are unsupported or unavailable:
+  # 'settings.GENERAL_CRYPTO_LIBRARY' and 'settings.RSA_CRYPTO_LIBRARY'.
   check_crypto_libraries(['rsa', 'general'])
 
   encrypted_pem = None
@@ -1440,18 +1438,18 @@ def create_rsa_encrypted_pem(private_key, passphrase):
   # Generate the public and private RSA keys. The PyCrypto module performs
   # the actual key generation. Raise 'ValueError' if 'bits' is less than 1024
   # or not a multiple of 256, although a 2048-bit minimum is enforced by
-  # ssl_crypto.formats.RSAKEYBITS_SCHEMA.check_match().
+  # ssl_crypto__formats.RSAKEYBITS_SCHEMA.check_match().
   if _RSA_CRYPTO_LIBRARY == 'pycrypto':
     encrypted_pem = \
-      ssl_crypto.pycrypto_keys.create_rsa_encrypted_pem(private_key, passphrase)
+      ssl_crypto__pycrypto_keys.create_rsa_encrypted_pem(private_key, passphrase)
 
   elif _RSA_CRYPTO_LIBRARY == 'pyca-cryptography':
     encrypted_pem = \
-      ssl_crypto.pycrypto_keys.create_rsa_encrypted_pem(private_key, passphrase)
+      ssl_crypto__pycrypto_keys.create_rsa_encrypted_pem(private_key, passphrase)
 
   # check_crypto_libraries() should have fully verified _RSA_CRYPTO_LIBRARY.
   else: # pragma: no cover
-    raise ssl_crypto.UnsupportedLibraryError('Invalid crypto library:'
+    raise ssl_commons__exceptions.UnsupportedLibraryError('Invalid crypto library:'
       ' ' + repr(_RSA_CRYPTO_LIBRARY) + '.')
 
   return encrypted_pem

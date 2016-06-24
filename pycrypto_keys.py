@@ -58,6 +58,8 @@ import os
 import binascii
 import json
 
+from simple_settings import settings
+
 # Crypto.PublicKey (i.e., PyCrypto's public-key cryptography modules) supports 
 # algorithms like the Digital Signature Algorithm (DSA) and the ElGamal
 # encryption system.  'Crypto.PublicKey.RSA' is needed here to generate, sign,
@@ -104,20 +106,19 @@ import Crypto.Random
 # the AES algorithm to perform cipher block operations on them. 
 import Crypto.Util.Counter
 
-# Import the TUF package and TUF-defined exceptions in __init__.py.
-import ssl_crypto
+from ..ssl_commons import exceptions as ssl_commons__exceptions
 
 # Digest objects needed to generate hashes.
-import ssl_crypto.hash
+from . import hash as ssl_crypto__hash
 
 # Perform object format-checking.
-import ssl_crypto.formats
+from . import formats as ssl_crypto__formats
 
 # Extract the cryptography library settings.
-# import ssl_crypto.conf
+# import settings
 
 # Import key files containing json data.
-import ssl_crypto.util
+from . import util as ssl_crypto__util
 
 # Recommended RSA key sizes:
 # http://www.emc.com/emc-plus/rsa-labs/historical/twirl-and-rsa-key-size.htm#table1
@@ -141,7 +142,7 @@ _SALT_SIZE = 16
 
 # Default PBKDF2 passphrase iterations.  The current "good enough" number
 # of passphrase iterations.  We recommend that important keys, such as root,
-# be kept offline.  'ssl_crypto.conf.PBKDF2_ITERATIONS' should increase as CPU
+# be kept offline.  'settings.PBKDF2_ITERATIONS' should increase as CPU
 # speeds increase, set here at 100,000 iterations by default (in 2013).
 # Repository maintainers may opt to modify the default setting according to
 # their security needs and computational restrictions.  A strong user password
@@ -149,14 +150,14 @@ _SALT_SIZE = 16
 # derived key+PBDKF2 combination if the key is loaded and re-saved, overriding
 # any previous iteration setting used by the old '<keyid>.key'.
 # https://en.wikipedia.org/wiki/PBKDF2
-_PBKDF2_ITERATIONS = ssl_crypto.conf.PBKDF2_ITERATIONS
+_PBKDF2_ITERATIONS = settings.PBKDF2_ITERATIONS
 
 
 def generate_rsa_public_and_private(bits=_DEFAULT_RSA_KEY_BITS):
   """
   <Purpose> 
     Generate public and private RSA keys with modulus length 'bits'.
-    The public and private keys returned conform to 'ssl_crypto.formats.PEMRSA_SCHEMA'
+    The public and private keys returned conform to 'ssl_crypto__formats.PEMRSA_SCHEMA'
     and have the form:
     '-----BEGIN RSA PUBLIC KEY----- ...'
 
@@ -172,9 +173,9 @@ def generate_rsa_public_and_private(bits=_DEFAULT_RSA_KEY_BITS):
     size recommended by TUF.
     
     >>> public, private = generate_rsa_public_and_private(2048)
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(public)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(public)
     True
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(private)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(private)
     True
 
   <Arguments>
@@ -183,7 +184,7 @@ def generate_rsa_public_and_private(bits=_DEFAULT_RSA_KEY_BITS):
       greater, and a multiple of 256.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'bits' does not contain the correct format.
+    ssl_commons__exceptions.FormatError, if 'bits' does not contain the correct format.
     
     ValueError, if an exception occurs in the RSA key generation routine.
     'bits' must be a multiple of 256.  The 'ValueError' exception is raised by
@@ -197,15 +198,15 @@ def generate_rsa_public_and_private(bits=_DEFAULT_RSA_KEY_BITS):
   """
 
   # Does 'bits' have the correct format?
-  # This check will ensure 'bits' conforms to 'ssl_crypto.formats.RSAKEYBITS_SCHEMA'.
+  # This check will ensure 'bits' conforms to 'ssl_crypto__formats.RSAKEYBITS_SCHEMA'.
   # 'bits' must be an integer object, with a minimum value of 2048.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.RSAKEYBITS_SCHEMA.check_match(bits)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.RSAKEYBITS_SCHEMA.check_match(bits)
   
   # Generate the public and private RSA keys.  The PyCrypto module performs
   # the actual key generation.  Raise 'ValueError' if 'bits' is less than 1024 
   # or not a multiple of 256, although a 2048-bit minimum is enforced by
-  # ssl_crypto.formats.RSAKEYBITS_SCHEMA.check_match().
+  # ssl_crypto__formats.RSAKEYBITS_SCHEMA.check_match().
   rsa_key_object = Crypto.PublicKey.RSA.generate(bits)
   
   # Extract the public & private halves of the RSA key and generate their
@@ -236,11 +237,11 @@ def create_rsa_signature(private_key, data):
     >>> public, private = generate_rsa_public_and_private(2048)
     >>> data = 'The quick brown fox jumps over the lazy dog'.encode('utf-8')
     >>> signature, method = create_rsa_signature(private, data)
-    >>> ssl_crypto.formats.NAME_SCHEMA.matches(method)
+    >>> ssl_crypto__formats.NAME_SCHEMA.matches(method)
     True
     >>> method == 'RSASSA-PSS'
     True
-    >>> ssl_crypto.formats.PYCRYPTOSIGNATURE_SCHEMA.matches(signature)
+    >>> ssl_crypto__formats.PYCRYPTOSIGNATURE_SCHEMA.matches(signature)
     True
 
   <Arguments>
@@ -251,11 +252,11 @@ def create_rsa_signature(private_key, data):
       Data (string) used by create_rsa_signature() to generate the signature.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'private_key' is improperly formatted.
+    ssl_commons__exceptions.FormatError, if 'private_key' is improperly formatted.
     
     TypeError, if 'private_key' is unset.
 
-    ssl_crypto.CryptoError, if the signature cannot be generated. 
+    ssl_commons__exceptions.CryptoError, if the signature cannot be generated. 
 
   <Side Effects>
     PyCrypto's 'Crypto.Signature.PKCS1_PSS' called to generate the signature.
@@ -266,12 +267,12 @@ def create_rsa_signature(private_key, data):
   """
   
   # Does 'private_key' have the correct format?
-  # This check will ensure 'private_key' conforms to 'ssl_crypto.formats.PEMRSA_SCHEMA'.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(private_key)
+  # This check will ensure 'private_key' conforms to 'ssl_crypto__formats.PEMRSA_SCHEMA'.
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(private_key)
 
   # Does 'data' have the correct format?
-  ssl_crypto.formats.DATA_SCHEMA.check_match(data)
+  ssl_crypto__formats.DATA_SCHEMA.check_match(data)
 
   # Signing the 'data' object requires a private key.
   # The 'RSASSA-PSS' (i.e., PyCrypto module) signing method is the
@@ -298,22 +299,22 @@ def create_rsa_signature(private_key, data):
       rsa_key_object = Crypto.PublicKey.RSA.importKey(private_key)
     
     except (ValueError, IndexError, TypeError) as e:
-      raise ssl_crypto.CryptoError('Invalid private key or hash data: ' + str(e))
+      raise ssl_commons__exceptions.CryptoError('Invalid private key or hash data: ' + str(e))
    
-    # Generate RSSA-PSS signature.  Raise 'ssl_crypto.CryptoError' for the expected
+    # Generate RSSA-PSS signature.  Raise 'ssl_commons__exceptions.CryptoError' for the expected
     # PyCrypto exceptions.
     try:
       pkcs1_pss_signer = Crypto.Signature.PKCS1_PSS.new(rsa_key_object)
       signature = pkcs1_pss_signer.sign(sha256_object)
     
     except ValueError: #pragma: no cover
-      raise ssl_crypto.CryptoError('The RSA key too small for given hash algorithm.')
+      raise ssl_commons__exceptions.CryptoError('The RSA key too small for given hash algorithm.')
     
     except TypeError:
-      raise ssl_crypto.CryptoError('Missing required RSA private key.')
+      raise ssl_commons__exceptions.CryptoError('Missing required RSA private key.')
    
     except IndexError: # pragma: no cover
-      raise ssl_crypto.CryptoError('An RSA signature cannot be generated: ' + str(e))
+      raise ssl_commons__exceptions.CryptoError('An RSA signature cannot be generated: ' + str(e))
   
   else:
     raise TypeError('The required private key is unset.')
@@ -356,10 +357,10 @@ def verify_rsa_signature(signature, signature_method, public_key, data):
       'signature'.  'data' is needed here to verify the signature.
 
   <Exceptions>
-    ssl_crypto.UnknownMethodError.  Raised if the signing method used by
+    ssl_commons__exceptions.UnknownMethodError.  Raised if the signing method used by
     'signature' is not one supported by ssl_crypto.keys.create_signature().
     
-    ssl_crypto.FormatError. Raised if 'signature', 'signature_method', or 'public_key'
+    ssl_commons__exceptions.FormatError. Raised if 'signature', 'signature_method', or 'public_key'
     is improperly formatted.
 
   <Side Effects>
@@ -370,18 +371,18 @@ def verify_rsa_signature(signature, signature_method, public_key, data):
   """
   
   # Does 'public_key' have the correct format?
-  # This check will ensure 'public_key' conforms to 'ssl_crypto.formats.PEMRSA_SCHEMA'.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(public_key)
+  # This check will ensure 'public_key' conforms to 'ssl_crypto__formats.PEMRSA_SCHEMA'.
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(public_key)
 
   # Does 'signature_method' have the correct format?
-  ssl_crypto.formats.NAME_SCHEMA.check_match(signature_method)
+  ssl_crypto__formats.NAME_SCHEMA.check_match(signature_method)
 
   # Does 'signature' have the correct format?
-  ssl_crypto.formats.PYCRYPTOSIGNATURE_SCHEMA.check_match(signature)
+  ssl_crypto__formats.PYCRYPTOSIGNATURE_SCHEMA.check_match(signature)
 
   # Does 'data' have the correct format?
-  ssl_crypto.formats.DATA_SCHEMA.check_match(data)
+  ssl_crypto__formats.DATA_SCHEMA.check_match(data)
 
   # Verify whether the private key of 'public_key' produced 'signature'.
   # Before returning the 'valid_signature' Boolean result, ensure 'RSASSA-PSS'
@@ -389,7 +390,7 @@ def verify_rsa_signature(signature, signature_method, public_key, data):
   valid_signature = False
 
   # Verify the signature with PyCrypto if the signature method is valid,
-  # otherwise raise 'ssl_crypto.UnknownMethodError'.
+  # otherwise raise 'ssl_commons__exceptions.UnknownMethodError'.
   if signature_method == 'RSASSA-PSS':
     try:
       rsa_key_object = Crypto.PublicKey.RSA.importKey(public_key)
@@ -398,10 +399,10 @@ def verify_rsa_signature(signature, signature_method, public_key, data):
       valid_signature = pkcs1_pss_verifier.verify(sha256_object, signature)
     
     except (ValueError, IndexError, TypeError) as e:
-      raise ssl_crypto.CryptoError('The RSA signature could not be verified.')
+      raise ssl_commons__exceptions.CryptoError('The RSA signature could not be verified.')
   
   else:
-    raise ssl_crypto.UnknownMethodError(signature_method)
+    raise ssl_commons__exceptions.UnknownMethodError(signature_method)
 
   return valid_signature 
 
@@ -424,7 +425,7 @@ def create_rsa_encrypted_pem(private_key, passphrase):
     >>> public, private = generate_rsa_public_and_private(2048)
     >>> passphrase = 'secret'
     >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase)
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(encrypted_pem)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(encrypted_pem)
     True
 
   <Arguments>
@@ -437,9 +438,9 @@ def create_rsa_encrypted_pem(private_key, passphrase):
       encryption key is derived from it. 
 
   <Exceptions>
-    ssl_crypto.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
 
-    ssl_crypto.CryptoError, if an RSA key in encrypted PEM format cannot be created.
+    ssl_commons__exceptions.CryptoError, if an RSA key in encrypted PEM format cannot be created.
 
     TypeError, 'private_key' is unset. 
 
@@ -449,17 +450,17 @@ def create_rsa_encrypted_pem(private_key, passphrase):
 
   <Returns>
     A string in PEM format, where the private RSA key is encrypted.
-    Conforms to 'ssl_crypto.formats.PEMRSA_SCHEMA'.
+    Conforms to 'ssl_crypto__formats.PEMRSA_SCHEMA'.
   """
   
   # Does 'private_key' have the correct format?
   # This check will ensure 'private_key' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(private_key)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(private_key)
   
   # Does 'passphrase' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(passphrase)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(passphrase)
 
   # 'private_key' is in PEM format and unencrypted.  The extracted key will be
   # imported and converted to PyCrypto's RSA key object
@@ -467,7 +468,7 @@ def create_rsa_encrypted_pem(private_key, passphrase):
   # passphrase specified, to create the string.  PyCrypto uses PBKDF1+MD5 to
   # strengthen 'passphrase', and 3DES with CBC mode for encryption.
   # 'private_key' may still be a NULL string after the
-  # 'ssl_crypto.formats.PEMRSA_SCHEMA' (i.e., 'private_key' has variable size and can
+  # 'ssl_crypto__formats.PEMRSA_SCHEMA' (i.e., 'private_key' has variable size and can
   # be an empty string.
 
   if len(private_key):
@@ -477,7 +478,7 @@ def create_rsa_encrypted_pem(private_key, passphrase):
                                                passphrase=passphrase) 
     
     except (ValueError, IndexError, TypeError) as e:
-      raise ssl_crypto.CryptoError('An encrypted RSA key in PEM format cannot'
+      raise ssl_commons__exceptions.CryptoError('An encrypted RSA key in PEM format cannot'
         ' be generated: ' + str(e))
   
   else:
@@ -494,7 +495,7 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
   """
   <Purpose>
     Generate public and private RSA keys from an encrypted PEM.
-    The public and private keys returned conform to 'ssl_crypto.formats.PEMRSA_SCHEMA'
+    The public and private keys returned conform to 'ssl_crypto__formats.PEMRSA_SCHEMA'
     and have the form:
 
     '-----BEGIN RSA PUBLIC KEY----- ...'
@@ -516,9 +517,9 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
     >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase)
     >>> returned_public, returned_private = \
     create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase)
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(returned_public)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(returned_public)
     True
-    >>> ssl_crypto.formats.PEMRSA_SCHEMA.matches(returned_private)
+    >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(returned_private)
     True
     >>> public == returned_public
     True
@@ -539,9 +540,9 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
       it is used to derive a stronger symmetric key.
 
   <Exceptions>
-    ssl_crypto.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
 
-    ssl_crypto.CryptoError, if the public and private RSA keys cannot be generated
+    ssl_commons__exceptions.CryptoError, if the public and private RSA keys cannot be generated
     from 'encrypted_pem', or exported in PEM format.
 
   <Side Effects>
@@ -555,11 +556,11 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
   # Does 'encryped_pem' have the correct format?
   # This check will ensure 'encrypted_pem' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.PEMRSA_SCHEMA.check_match(encrypted_pem)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(encrypted_pem)
 
   # Does 'passphrase' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(passphrase)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(passphrase)
  
   # Generate a PyCrypto key object from 'encrypted_pem'.  The generated PyCrypto
   # key contains the required export methods needed to generate the
@@ -573,9 +574,9 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
   # If the passphrase is incorrect, PyCrypto returns: "RSA key format is not
   # supported".
   except (ValueError, IndexError, TypeError) as e:
-    # Raise 'ssl_crypto.CryptoError' and PyCrypto's exception message.  Avoid
+    # Raise 'ssl_commons__exceptions.CryptoError' and PyCrypto's exception message.  Avoid
     # propogating PyCrypto's exception trace to avoid revealing sensitive error.
-    raise ssl_crypto.CryptoError('RSA (public, private) tuple cannot be generated'
+    raise ssl_commons__exceptions.CryptoError('RSA (public, private) tuple cannot be generated'
       ' from the encrypted PEM string: ' + str(e))
   
   # Export the public and private halves of the PyCrypto RSA key object.  The
@@ -590,7 +591,7 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
   # exported.  See 'Crypto.PublicKey.RSA'.  'ValueError' should not be raised
   # if the 'Crypto.PublicKey.RSA.importKey() call above passed.
   except (ValueError): #pragma: no cover
-    raise ssl_crypto.CryptoError('The public and private keys cannot be exported'
+    raise ssl_commons__exceptions.CryptoError('The public and private keys cannot be exported'
       ' in PEM format.')
 
   return public.decode(), private.decode()
@@ -614,7 +615,7 @@ def encrypt_key(key_object, password):
     Based Key Derivation Function 1 (PBKF1) + MD5 to strengthen 'password',
     encrypted TUF keys use AES-256-CTR-Mode and passwords strengthened with
     PBKDF2-HMAC-SHA256 (100K iterations by default, but may be overriden in
-    'ssl_crypto.conf.PBKDF2_ITERATIONS' by the user).
+    'settings.PBKDF2_ITERATIONS' by the user).
 
     http://en.wikipedia.org/wiki/Advanced_Encryption_Standard
     http://en.wikipedia.org/wiki/CTR_mode#Counter_.28CTR.29
@@ -629,7 +630,7 @@ def encrypt_key(key_object, password):
           '1f26964cc8d4f7ee5f3c5da2fbb7ab35811169573ac367b860a537e47789f8c4'}}
     >>> passphrase = 'secret'
     >>> encrypted_key = encrypt_key(ed25519_key, passphrase)
-    >>> ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA.matches(encrypted_key.encode('utf-8'))
+    >>> ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA.matches(encrypted_key.encode('utf-8'))
     True
 
   <Arguments>
@@ -643,10 +644,10 @@ def encrypt_key(key_object, password):
       encryption key is derived from it. 
 
   <Exceptions>
-    ssl_crypto.FormatError, if any of the arguments are improperly formatted or 
+    ssl_commons__exceptions.FormatError, if any of the arguments are improperly formatted or 
     'key_object' does not contain the private portion of the key.
 
-    ssl_crypto.CryptoError, if an ED25519 key in encrypted TUF format cannot be
+    ssl_commons__exceptions.CryptoError, if an ED25519 key in encrypted TUF format cannot be
     created.
 
   <Side Effects>
@@ -654,26 +655,26 @@ def encrypt_key(key_object, password):
     'key_object'.  'password' used to derive a suitable encryption key.
 
   <Returns>
-    An encrypted string in 'ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA' format.
+    An encrypted string in 'ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA' format.
   """
   
   # Do the arguments have the correct format?
   # Ensure the arguments have the appropriate number of objects and object
   # types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.ANYKEY_SCHEMA.check_match(key_object)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.ANYKEY_SCHEMA.check_match(key_object)
   
   # Does 'password' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(password)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(password)
 
   # Ensure the private portion of the key is included in 'key_object'.
   if not key_object['keyval']['private']:
-    raise ssl_crypto.FormatError('Key object does not contain a private part.')
+    raise ssl_commons__exceptions.FormatError('Key object does not contain a private part.')
 
   # Derive a key (i.e., an appropriate encryption key and not the
   # user's password) from the given 'password'.  Strengthen 'password' with
   # PBKDF2-HMAC-SHA256 (100K iterations by default, but may be overriden in
-  # 'ssl_crypto.conf.PBKDF2_ITERATIONS' by the user).
+  # 'settings.PBKDF2_ITERATIONS' by the user).
   salt, iterations, derived_key = _generate_derived_key(password)
  
   # Store the derived key info in a dictionary, the object expected
@@ -702,7 +703,7 @@ def decrypt_key(encrypted_key, password):
     
     Encrypted TUF keys use AES-256-CTR-Mode and passwords strengthened with
     PBKDF2-HMAC-SHA256 (100K iterations be default, but may be overriden in
-    'ssl_crypto.conf.py' by the user).
+    'settings.py' by the user).
   
     http://en.wikipedia.org/wiki/Advanced_Encryption_Standard
     http://en.wikipedia.org/wiki/CTR_mode#Counter_.28CTR.29
@@ -718,7 +719,7 @@ def decrypt_key(encrypted_key, password):
     >>> passphrase = 'secret'
     >>> encrypted_key = encrypt_key(ed25519_key, passphrase)
     >>> decrypted_key = decrypt_key(encrypted_key.encode('utf-8'), passphrase)
-    >>> ssl_crypto.formats.ED25519KEY_SCHEMA.matches(decrypted_key)
+    >>> ssl_crypto__formats.ED25519KEY_SCHEMA.matches(decrypted_key)
     True
     >>> decrypted_key == ed25519_key
     True
@@ -727,7 +728,7 @@ def decrypt_key(encrypted_key, password):
     encrypted_key:
       An encrypted TUF key (additional data is also included, such as salt,
       number of password iterations used for the derived encryption key, etc)
-      of the form 'ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA'.  'encrypted_key' should
+      of the form 'ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA'.  'encrypted_key' should
       have been generated with encrypted_key().
 
     password:
@@ -736,11 +737,11 @@ def decrypt_key(encrypted_key, password):
       encryption key is derived from it. 
 
   <Exceptions>
-    ssl_crypto.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
 
-    ssl_crypto.CryptoError, if a TUF key cannot be decrypted from 'encrypted_key'.
+    ssl_commons__exceptions.CryptoError, if a TUF key cannot be decrypted from 'encrypted_key'.
     
-    ssl_crypto.Error, if a valid TUF key object is not found in 'encrypted_key'.
+    ssl_commons__exceptions.Error, if a valid TUF key object is not found in 'encrypted_key'.
 
   <Side Effects>
     The PyCrypto library called to perform the actual decryption of
@@ -748,25 +749,25 @@ def decrypt_key(encrypted_key, password):
     to re-derive the encryption/decryption key.
 
   <Returns>
-    The decrypted key object in 'ssl_crypto.formats.ANYKEY_SCHEMA' format.
+    The decrypted key object in 'ssl_crypto__formats.ANYKEY_SCHEMA' format.
   """
   
   # Do the arguments have the correct format?
   # Ensure the arguments have the appropriate number of objects and object
   # types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.ENCRYPTEDKEY_SCHEMA.check_match(encrypted_key)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.ENCRYPTEDKEY_SCHEMA.check_match(encrypted_key)
   
   # Does 'password' have the correct format?
-  ssl_crypto.formats.PASSWORD_SCHEMA.check_match(password)
+  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(password)
 
   # Decrypt 'encrypted_key', using 'password' (and additional key derivation
   # data like salts and password iterations) to re-derive the decryption key. 
   json_data = _decrypt(encrypted_key.decode('utf-8'), password)
  
-  # Raise 'ssl_crypto.Error' if 'json_data' cannot be deserialized to a valid
-  # 'ssl_crypto.formats.ANYKEY_SCHEMA' key object.
-  key_object = ssl_crypto.util.load_json_string(json_data.decode()) 
+  # Raise 'ssl_commons__exceptions.Error' if 'json_data' cannot be deserialized to a valid
+  # 'ssl_crypto__formats.ANYKEY_SCHEMA' key object.
+  key_object = ssl_crypto__util.load_json_string(json_data.decode()) 
   
   return key_object
 
@@ -822,7 +823,7 @@ def _encrypt(key_data, derived_key_information):
   modified.
 
   'key_data' is the JSON string representation of the key.  In the case
-  of RSA keys, this format would be 'ssl_crypto.formats.RSAKEY_SCHEMA':
+  of RSA keys, this format would be 'ssl_crypto__formats.RSAKEY_SCHEMA':
   {'keytype': 'rsa',
    'keyval': {'public': '-----BEGIN RSA PUBLIC KEY----- ...',
               'private': '-----BEGIN RSA PRIVATE KEY----- ...'}}
@@ -832,7 +833,7 @@ def _encrypt(key_data, derived_key_information):
      'derived_key': '...',
      'iterations': '...'}
 
-  'ssl_crypto.CryptoError' raised if the encryption fails.
+  'ssl_commons__exceptions.CryptoError' raised if the encryption fails.
   """
   
   # Generate a random initialization vector (IV).  The 'iv' is treated as the
@@ -861,9 +862,9 @@ def _encrypt(key_data, derived_key_information):
   # PyCrypto does not document the exceptions that may be raised or under
   # what circumstances.  PyCrypto example given is to call encrypt() without
   # checking for exceptions.  Avoid propogating the exception trace and only
-  # raise 'ssl_crypto.CryptoError', along with the cause of encryption failure.
+  # raise 'ssl_commons__exceptions.CryptoError', along with the cause of encryption failure.
   except (ValueError, IndexError, TypeError) as e:
-    raise ssl_crypto.CryptoError('The key data cannot be encrypted: ' + str(e))
+    raise ssl_commons__exceptions.CryptoError('The key data cannot be encrypted: ' + str(e))
 
   # Generate the hmac of the ciphertext to ensure it has not been modified.
   # The decryption routine may verify a ciphertext without having to perform
@@ -897,21 +898,21 @@ def _decrypt(file_contents, password):
   """
   The corresponding decryption routine for _encrypt().
 
-  'ssl_crypto.CryptoError' raised if the decryption fails.
+  'ssl_commons__exceptions.CryptoError' raised if the decryption fails.
   """
  
   # Extract the salt, iterations, hmac, initialization vector, and ciphertext
   # from 'file_contents'.  These five values are delimited by
   # '_ENCRYPTION_DELIMITER'.  This delimiter is arbitrarily chosen and should
   # not occur in the hexadecimal representations of the fields it is separating.
-  # Raise 'ssl_crypto.CryptoError', if 'file_contents' does not contains the expected
+  # Raise 'ssl_commons__exceptions.CryptoError', if 'file_contents' does not contains the expected
   # data layout.
   try: 
     salt, iterations, hmac, iv, ciphertext = \
       file_contents.split(_ENCRYPTION_DELIMITER)
   
   except ValueError:
-    raise ssl_crypto.CryptoError('Invalid encrypted file.') 
+    raise ssl_commons__exceptions.CryptoError('Invalid encrypted file.') 
 
   # Ensure we have the expected raw data for the delimited cryptographic data. 
   salt = binascii.unhexlify(salt.encode('utf-8'))
@@ -931,8 +932,8 @@ def _decrypt(file_contents, password):
                                                Crypto.Hash.SHA256)
   generated_hmac = generated_hmac_object.hexdigest()
 
-  if not ssl_crypto.util.digests_are_equal(generated_hmac, hmac):
-    raise ssl_crypto.CryptoError('Decryption failed.')
+  if not ssl_crypto__util.digests_are_equal(generated_hmac, hmac):
+    raise ssl_commons__exceptions.CryptoError('Decryption failed.')
 
   # The following decryption routine assumes 'ciphertext' was encrypted with
   # AES-256.
@@ -947,11 +948,11 @@ def _decrypt(file_contents, password):
   # PyCrypto does not document the exceptions that may be raised or under
   # what circumstances.  PyCrypto example given is to call decrypt() without
   # checking for exceptions.  Avoid propogating the exception trace and only
-  # raise 'ssl_crypto.CryptoError', along with the cause of decryption failure.
+  # raise 'ssl_commons__exceptions.CryptoError', along with the cause of decryption failure.
   # Note: decryption failure, due to malicious ciphertext, should not occur here
   # if the hmac check above passed.
   except (ValueError, IndexError, TypeError) as e: # pragma: no cover
-    raise ssl_crypto.CryptoError('Decryption failed: ' + str(e))
+    raise ssl_commons__exceptions.CryptoError('Decryption failed: ' + str(e))
 
   return key_plaintext
 

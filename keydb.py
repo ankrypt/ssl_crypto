@@ -37,11 +37,12 @@ from __future__ import unicode_literals
 
 import logging
 import copy
-
-import ssl_crypto
-import ssl_crypto.formats
-import ssl_crypto.keys
 import six
+
+from ..ssl_commons import exceptions as ssl_commons__exceptions
+from . import formats as ssl_crypto__formats
+from . import keys as ssl_crypto__keys
+
 
 # List of strings representing the key types supported by TUF.
 _SUPPORTED_KEY_TYPES = ['rsa', 'ed25519']
@@ -57,19 +58,19 @@ def create_keydb_from_root_metadata(root_metadata):
   """
   <Purpose>
     Populate the key database with the unique keys found in 'root_metadata'.
-    The database dictionary will conform to 'ssl_crypto.formats.KEYDB_SCHEMA' and
+    The database dictionary will conform to 'ssl_crypto__formats.KEYDB_SCHEMA' and
     have the form: {keyid: key, ...}.  
-    The 'keyid' conforms to 'ssl_crypto.formats.KEYID_SCHEMA' and 'key' to its
+    The 'keyid' conforms to 'ssl_crypto__formats.KEYID_SCHEMA' and 'key' to its
     respective type.  In the case of RSA keys, this object would match
     'RSAKEY_SCHEMA'.
 
   <Arguments>
     root_metadata:
-      A dictionary conformant to 'ssl_crypto.formats.ROOT_SCHEMA'.  The keys found
+      A dictionary conformant to 'ssl_crypto__formats.ROOT_SCHEMA'.  The keys found
       in the 'keys' field of 'root_metadata' are needed by this function.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'root_metadata' does not have the correct format.
+    ssl_commons__exceptions.FormatError, if 'root_metadata' does not have the correct format.
 
   <Side Effects>
     A function to add the key to the database is called.  In the case of RSA
@@ -84,8 +85,8 @@ def create_keydb_from_root_metadata(root_metadata):
   # Does 'root_metadata' have the correct format?
   # This check will ensure 'root_metadata' has the appropriate number of objects
   # and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' if the check fails.
-  ssl_crypto.formats.ROOT_SCHEMA.check_match(root_metadata)
+  # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
+  ssl_crypto__formats.ROOT_SCHEMA.check_match(root_metadata)
 
   # Clear the key database.
   _keydb_dict.clear()
@@ -98,18 +99,18 @@ def create_keydb_from_root_metadata(root_metadata):
       # 'key_metadata' is stored in 'KEY_SCHEMA' format.  Call
       # create_from_metadata_format() to get the key in 'RSAKEY_SCHEMA'
       # format, which is the format expected by 'add_key()'.
-      key_dict = ssl_crypto.keys.format_metadata_to_key(key_metadata)
+      key_dict = ssl_crypto__keys.format_metadata_to_key(key_metadata)
       try:
         add_key(key_dict, keyid)
       
       # Although keyid duplicates should *not* occur (unique dict keys), log a
       # warning and continue.
-      except ssl_crypto.KeyAlreadyExistsError as e: # pragma: no cover
+      except ssl_commons__exceptions.KeyAlreadyExistsError as e: # pragma: no cover
         logger.warning(e)
         continue
       
-      # 'ssl_crypto.Error' raised if keyid does not match the keyid for 'rsakey_dict'.
-      except ssl_crypto.Error as e:
+      # 'ssl_commons__exceptions.Error' raised if keyid does not match the keyid for 'rsakey_dict'.
+      except ssl_commons__exceptions.Error as e:
         logger.error(e)
         continue
     
@@ -129,7 +130,7 @@ def add_key(key_dict, keyid=None):
   
   <Arguments>
     key_dict:
-      A dictionary conformant to 'ssl_crypto.formats.ANYKEY_SCHEMA'.
+      A dictionary conformant to 'ssl_crypto__formats.ANYKEY_SCHEMA'.
       It has the form:
       {'keytype': 'rsa',
        'keyid': keyid,
@@ -141,12 +142,12 @@ def add_key(key_dict, keyid=None):
       for RSA keys.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'rsakey_dict' or 'keyid' does not have the 
+    ssl_commons__exceptions.FormatError, if 'rsakey_dict' or 'keyid' does not have the 
     correct format.
 
-    ssl_crypto.Error, if 'keyid' does not match the keyid for 'rsakey_dict'.
+    ssl_commons__exceptions.Error, if 'keyid' does not match the keyid for 'rsakey_dict'.
 
-    ssl_crypto.KeyAlreadyExistsError, if 'rsakey_dict' is found in the key database.
+    ssl_commons__exceptions.KeyAlreadyExistsError, if 'rsakey_dict' is found in the key database.
 
   <Side Effects>
     The keydb key database is modified.
@@ -158,23 +159,23 @@ def add_key(key_dict, keyid=None):
   # Does 'rsakey_dict' have the correct format?
   # This check will ensure 'rsakey_dict' has the appropriate number of objects
   # and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError if the check fails.
-  ssl_crypto.formats.ANYKEY_SCHEMA.check_match(key_dict)
+  # Raise 'ssl_commons__exceptions.FormatError if the check fails.
+  ssl_crypto__formats.ANYKEY_SCHEMA.check_match(key_dict)
 
   # Does 'keyid' have the correct format?
   if keyid is not None:
-    # Raise 'ssl_crypto.FormatError' if the check fails. 
-    ssl_crypto.formats.KEYID_SCHEMA.check_match(keyid)
+    # Raise 'ssl_commons__exceptions.FormatError' if the check fails. 
+    ssl_crypto__formats.KEYID_SCHEMA.check_match(keyid)
 
     # Check if the keyid found in 'key_dict' matches 'keyid'.
     if keyid != key_dict['keyid']:
-      raise ssl_crypto.Error('Incorrect keyid ' + key_dict['keyid'] + ' expected ' + keyid)
+      raise ssl_commons__exceptions.Error('Incorrect keyid ' + key_dict['keyid'] + ' expected ' + keyid)
  
   # Check if the keyid belonging to 'rsakey_dict' is not already
   # available in the key database before returning.
   keyid = key_dict['keyid']
   if keyid in _keydb_dict:
-    raise ssl_crypto.KeyAlreadyExistsError('Key: '+keyid)
+    raise ssl_commons__exceptions.KeyAlreadyExistsError('Key: '+keyid)
  
   _keydb_dict[keyid] = copy.deepcopy(key_dict)
 
@@ -189,33 +190,33 @@ def get_key(keyid):
 
   <Arguments>
     keyid:
-      An object conformant to 'ssl_crypto.formats.KEYID_SCHEMA'.  It is used as an
+      An object conformant to 'ssl_crypto__formats.KEYID_SCHEMA'.  It is used as an
       identifier for keys.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'keyid' does not have the correct format.
+    ssl_commons__exceptions.FormatError, if 'keyid' does not have the correct format.
 
-    ssl_crypto.UnknownKeyError, if 'keyid' is not found in the keydb database.
+    ssl_commons__exceptions.UnknownKeyError, if 'keyid' is not found in the keydb database.
 
   <Side Effects>
     None.
 
   <Returns>
     The key matching 'keyid'.  In the case of RSA keys, a dictionary conformant
-    to 'ssl_crypto.formats.RSAKEY_SCHEMA' is returned.
+    to 'ssl_crypto__formats.RSAKEY_SCHEMA' is returned.
   """
 
   # Does 'keyid' have the correct format?
   # This check will ensure 'keyid' has the appropriate number of objects
   # and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' is the match fails.
-  ssl_crypto.formats.KEYID_SCHEMA.check_match(keyid)
+  # Raise 'ssl_commons__exceptions.FormatError' is the match fails.
+  ssl_crypto__formats.KEYID_SCHEMA.check_match(keyid)
 
   # Return the key belonging to 'keyid', if found in the key database.
   try:
     return copy.deepcopy(_keydb_dict[keyid])
   except KeyError:
-    raise ssl_crypto.UnknownKeyError('Key: '+keyid)
+    raise ssl_commons__exceptions.UnknownKeyError('Key: '+keyid)
 
 
 
@@ -228,13 +229,13 @@ def remove_key(keyid):
 
   <Arguments>
     keyid:
-      An object conformant to 'ssl_crypto.formats.KEYID_SCHEMA'.  It is used as an
+      An object conformant to 'ssl_crypto__formats.KEYID_SCHEMA'.  It is used as an
       identifier for keys.
 
   <Exceptions>
-    ssl_crypto.FormatError, if 'keyid' does not have the correct format.
+    ssl_commons__exceptions.FormatError, if 'keyid' does not have the correct format.
 
-    ssl_crypto.UnknownKeyError, if 'keyid' is not found in key database.
+    ssl_commons__exceptions.UnknownKeyError, if 'keyid' is not found in key database.
 
   <Side Effects>
     The key, identified by 'keyid', is deleted from the key database.
@@ -246,14 +247,14 @@ def remove_key(keyid):
   # Does 'keyid' have the correct format?
   # This check will ensure 'keyid' has the appropriate number of objects
   # and object types, and that all dict keys are properly named.
-  # Raise 'ssl_crypto.FormatError' is the match fails.
-  ssl_crypto.formats.KEYID_SCHEMA.check_match(keyid)
+  # Raise 'ssl_commons__exceptions.FormatError' is the match fails.
+  ssl_crypto__formats.KEYID_SCHEMA.check_match(keyid)
 
   # Remove the key belonging to 'keyid' if found in the key database.
   if keyid in _keydb_dict: 
     del _keydb_dict[keyid]
   else:
-    raise ssl_crypto.UnknownKeyError('Key: '+keyid)
+    raise ssl_commons__exceptions.UnknownKeyError('Key: '+keyid)
 
 
 
