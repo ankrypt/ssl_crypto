@@ -136,7 +136,7 @@ from simple_settings import settings
 from . import hash as ssl_crypto__hash
 
 # Perform format checks of argument objects.
-from . import formats as ssl_crypto__format
+from . import formats as ssl_crypto__formats
 
 # The hash algorithm to use in the generation of keyids.
 _KEY_ID_HASH_ALGORITHM = 'sha256'

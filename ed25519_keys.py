@@ -111,7 +111,7 @@ from . import hash as ssl_crypto__hash
 # Perform object format-checking.
 from . import formats as ssl_crypto__formats
 
-from ..ssl_commons import ssl_commons__exceptions
+from ..ssl_commons import exceptions as ssl_commons__exceptions
 
 # Supported ed25519 signing method: 'ed25519'.  The pure Python implementation
 # (i.e., ed25519') and PyNaCl (i.e., 'nacl', libsodium+Python bindings) modules

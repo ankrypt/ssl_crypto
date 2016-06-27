@@ -35,7 +35,7 @@ from .. import ed25519_keys as ssl_crypto__ed25519_keys
 
 logger = logging.getLogger('ssl_crypto__test_ed25519_keys')
 
-public, private = ed25519_keys.generate_public_and_private()
+public, private = ssl_crypto__ed25519_keys.generate_public_and_private()
 FORMAT_ERROR_MSG = 'ssl_commons__exceptions.FormatError raised.  Check object\'s format.'
 
 
@@ -45,7 +45,7 @@ class TestEd25519_keys(unittest.TestCase):
 
 
   def test_generate_public_and_private(self):
-    pub, priv = ed25519_keys.generate_public_and_private()
+    pub, priv = ssl_crypto__ed25519_keys.generate_public_and_private()
     
     # Check format of 'pub' and 'priv'.
     self.assertEqual(True, ssl_crypto__formats.ED25519PUBLIC_SCHEMA.matches(pub))
@@ -57,7 +57,7 @@ class TestEd25519_keys(unittest.TestCase):
     global public
     global private
     data = b'The quick brown fox jumps over the lazy dog'
-    signature, method = ed25519_keys.create_signature(public, private, data)
+    signature, method = ssl_crypto__ed25519_keys.create_signature(public, private, data)
 
     # Verify format of returned values.
     self.assertEqual(True,
@@ -68,73 +68,73 @@ class TestEd25519_keys(unittest.TestCase):
 
     # Check for improperly formatted argument.
     self.assertRaises(ssl_commons__exceptions.FormatError,
-                      ed25519_keys.create_signature, 123, private, data)
+                      ssl_crypto__ed25519_keys.create_signature, 123, private, data)
     
     self.assertRaises(ssl_commons__exceptions.FormatError,
-                      ed25519_keys.create_signature, public, 123, data)
+                      ssl_crypto__ed25519_keys.create_signature, public, 123, data)
    
     # Check for invalid 'data'.
     self.assertRaises(ssl_commons__exceptions.CryptoError,
-                      ed25519_keys.create_signature, public, private, 123)
+                      ssl_crypto__ed25519_keys.create_signature, public, private, 123)
 
 
   def test_verify_signature(self):
     global public
     global private
     data = b'The quick brown fox jumps over the lazy dog'
-    signature, method = ed25519_keys.create_signature(public, private, data)
+    signature, method = ssl_crypto__ed25519_keys.create_signature(public, private, data)
 
-    valid_signature = ed25519_keys.verify_signature(public, method, signature, data)
+    valid_signature = ssl_crypto__ed25519_keys.verify_signature(public, method, signature, data)
     self.assertEqual(True, valid_signature)
     
     # Test with 'pynacl'.
-    valid_signature = ed25519_keys.verify_signature(public, method, signature, data,
+    valid_signature = ssl_crypto__ed25519_keys.verify_signature(public, method, signature, data,
                                                use_pynacl=True)
     self.assertEqual(True, valid_signature)
    
     # Test with 'pynacl', but a bad signature is provided.
     bad_signature = os.urandom(64)
-    valid_signature = ed25519_keys.verify_signature(public, method, bad_signature,
+    valid_signature = ssl_crypto__ed25519_keys.verify_signature(public, method, bad_signature,
                                                data, use_pynacl=True)
     self.assertEqual(False, valid_signature)
     
 
 
     # Check for improperly formatted arguments.
-    self.assertRaises(ssl_commons__exceptions.FormatError, ed25519_keys.verify_signature, 123, method,
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__ed25519_keys.verify_signature, 123, method,
                                        signature, data)
     
     # Signature method improperly formatted.
-    self.assertRaises(ssl_commons__exceptions.FormatError, ed25519_keys.verify_signature, public, 123,
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__ed25519_keys.verify_signature, public, 123,
                                        signature, data)
    
     # Invalid signature method.
-    self.assertRaises(ssl_commons__exceptions.UnknownMethodError, ed25519_keys.verify_signature, public,
+    self.assertRaises(ssl_commons__exceptions.UnknownMethodError, ssl_crypto__ed25519_keys.verify_signature, public,
                                        'unsupported_method', signature, data)
    
     # Signature not a string.
-    self.assertRaises(ssl_commons__exceptions.FormatError, ed25519_keys.verify_signature, public, method,
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__ed25519_keys.verify_signature, public, method,
                                        123, data)
    
     # Invalid signature length, which must be exactly 64 bytes..
-    self.assertRaises(ssl_commons__exceptions.FormatError, ed25519_keys.verify_signature, public, method,
+    self.assertRaises(ssl_commons__exceptions.FormatError, ssl_crypto__ed25519_keys.verify_signature, public, method,
                                        'bad_signature', data)
     
     # Check for invalid signature and data.
     # Mismatched data.
-    self.assertEqual(False, ed25519_keys.verify_signature(public, method,
+    self.assertEqual(False, ssl_crypto__ed25519_keys.verify_signature(public, method,
                                                      signature, '123'))
    
     # Mismatched signature.
     bad_signature = b'a'*64 
-    self.assertEqual(False, ed25519_keys.verify_signature(public, method,
+    self.assertEqual(False, ssl_crypto__ed25519_keys.verify_signature(public, method,
                                                      bad_signature, data))
     
     # Generated signature created with different data.
-    new_signature, method = ed25519_keys.create_signature(public, private, 
+    new_signature, method = ssl_crypto__ed25519_keys.create_signature(public, private, 
                                                      b'mismatched data')
     
-    self.assertEqual(False, ed25519_keys.verify_signature(public, method,
+    self.assertEqual(False, ssl_crypto__ed25519_keys.verify_signature(public, method,
                                                      new_signature, data))
 
 

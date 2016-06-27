@@ -65,7 +65,7 @@ class TestPyca_crypto_keys(unittest.TestCase):
     global private_rsa
     global public_rsa
     data = 'The quick brown fox jumps over the lazy dog'.encode('utf-8')
-    signature, method = crypto_keys.create_rsa_signature(private_rsa, data)
+    signature, method = ssl_crypto__pyca_crypto_keys.create_rsa_signature(private_rsa, data)
 
     # Verify format of returned values.
     self.assertNotEqual(None, signature)
