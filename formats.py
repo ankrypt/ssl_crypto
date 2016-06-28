@@ -531,6 +531,37 @@ MIRRORLIST_SCHEMA = ssl_commons__schema.Object(
 ANYROLE_SCHEMA = ssl_commons__schema.OneOf([ROOT_SCHEMA, TARGETS_SCHEMA, SNAPSHOT_SCHEMA,
                                TIMESTAMP_SCHEMA, MIRROR_SCHEMA])
 
+def make_signable(object):
+  """
+  <Purpose>
+    Return the role metadata 'object' in 'SIGNABLE_SCHEMA' format.
+    'object' is added to the 'signed' key, and an empty list
+    initialized to the 'signatures' key.  The caller adds signatures
+    to this second field.
+    Note: check_signable_object_format() should be called after
+    make_signable() and signatures added to ensure the final
+    signable object has a valid format (i.e., a signable containing
+    a supported role metadata).
+
+  <Arguments>
+    object:
+      A role schema dict (e.g., 'ROOT_SCHEMA', 'SNAPSHOT_SCHEMA').
+
+  <Exceptions>
+    None.
+
+  <Side Effects>
+    None.
+
+  <Returns>
+    A dict in 'SIGNABLE_SCHEMA' format.
+  """
+
+  if not isinstance(object, dict) or 'signed' not in object:
+    return { 'signed' : object, 'signatures' : [] }
+  else:
+    return object
+
 
 def _canonical_string_encoder(string):
   """
@@ -554,9 +585,6 @@ def _canonical_string_encoder(string):
   string = '"%s"' % re.sub(r'(["\\])', r'\\\1', string)
  
   return string
-
-
-
 
 
 def _encode_canonical(object, output_function):
@@ -597,9 +625,6 @@ def _encode_canonical(object, output_function):
     output_function("}")
   else:
     raise ssl_commons__exceptions.FormatError('I cannot encode '+repr(object))
-
-
-
 
 
 def encode_canonical(object, output_function=None):
