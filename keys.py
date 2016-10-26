@@ -176,7 +176,7 @@ def generate_rsa_key(bits=_DEFAULT_RSA_KEY_BITS):
     generated, which is the key size recommended by TUF.  These key size
     restrictions are only enforced for keys generated within TUF.  RSA keys
     with sizes lower than what we recommended may still be imported (e.g., with
-    import_rsakey_from_encrypted_pem().
+    import_rsakey_from_pem().
     
     >>> rsa_key = generate_rsa_key(bits=2048)
     >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key)
@@ -909,68 +909,70 @@ def verify_signature(key_dict, signature, data):
 
 
 
-def import_rsakey_from_encrypted_pem(encrypted_pem, password):
+
+def import_rsakey_from_pem(pem, password=None):
   """
-  <Purpose> 
-    Import the public and private RSA keys stored in 'encrypted_pem'.  In
+  <Purpose>
+    Import the public and private RSA keys stored in 'pem'.  In
     addition, a keyid identifier for the RSA key is generated.  The object
     returned conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA' and has the
     form:
-    
+
     {'keytype': 'rsa',
      'keyid': keyid,
      'keyval': {'public': '-----BEGIN RSA PUBLIC KEY----- ...',
                 'private': '-----BEGIN RSA PRIVATE KEY----- ...'}}
-    
+
     The public and private keys are strings in PEM format.
 
     >>> rsa_key = generate_rsa_key()
     >>> private = rsa_key['keyval']['private']
     >>> passphrase = 'secret'
-    >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase) 
-    >>> rsa_key2 = import_rsakey_from_encrypted_pem(encrypted_pem, passphrase)
+    >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase)
+    >>> rsa_key2 = import_rsakey_from_pem(encrypted_pem, passphrase)
     >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key)
     True
     >>> ssl_crypto__formats.RSAKEY_SCHEMA.matches(rsa_key2)
     True
-  
+
   <Arguments>
-    encrypted_pem:
+    pem:
       A string in PEM format.
 
-    password:
+    password: (optional)
       The password, or passphrase, to decrypt the private part of the RSA
-      key.  'password' is not used directly as the encryption key, a stronger
-      encryption key is derived from it.
+      key if it is encrypted.  'password' is not used directly as the encryption
+      key, a stronger encryption key is derived from it.
 
   <Exceptions>
-    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
-   
-    ssl_commons__exceptions.UnsupportedLibraryError, if any of the cryptography libraries specified
-    in 'settings.py' are unsupported or unavailable.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly
+    formatted.
+
+    ssl_commons__exceptions.UnsupportedLibraryError, if any of the cryptography
+    libraries specified in 'settings.py' are unsupported or unavailable.
 
   <Side Effects>
     None.
 
   <Returns>
     A dictionary containing the RSA keys and other identifying information.
-    Conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA'. 
+    Conforms to 'ssl_crypto__formats.RSAKEY_SCHEMA'.
   """
 
-  # Does 'encrypted_pem' have the correct format?
-  # This check will ensure 'encrypted_pem' conforms to
+  # Does 'pem' have the correct format?
+  # This check will ensure 'pem' conforms to
   # 'ssl_crypto__formats.PEMRSA_SCHEMA'.
-  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(encrypted_pem)
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(pem)
 
-  # Does 'password' have the correct format?
-  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(password)
+  if password is not None:
+    ssl_crypto__formats.PASSWORD_SCHEMA.check_match(password)
 
-  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following libraries, specified in
-  # 'settings', are unsupported or unavailable:
-  # 'settings.RSA_CRYPTO_LIBRARY' and 'settings.GENERAL_CRYPTO_LIBRARY'. 
+  # Raise 'ssl_commons__exceptions.UnsupportedLibraryError' if the following
+  # libraries, specified in 'settings', are unsupported or unavailable:
+  # 'settings.RSA_CRYPTO_LIBRARY' and 'settings.GENERAL_CRYPTO_LIBRARY'.
   check_crypto_libraries(['rsa', 'general'])
 
-  # Begin building the RSA key dictionary. 
+  # Begin building the RSA key dictionary.
   rsakey_dict = {}
   keytype = 'rsa'
   public = None
@@ -980,22 +982,22 @@ def import_rsakey_from_encrypted_pem(encrypted_pem, password):
   # actual import operation.
   if _RSA_CRYPTO_LIBRARY == 'pycrypto':
     public, private = \
-      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem(encrypted_pem,
-                                                                         password)
+        ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem(
+        pem, password)
     public = format_rsakey_from_pem(public)['keyval']['public']
     private = extract_pem(private, private_pem=True)
 
   elif _RSA_CRYPTO_LIBRARY == 'pyca-cryptography':
     public, private = \
-      ssl_crypto__pyca_crypto_keys.create_rsa_public_and_private_from_encrypted_pem(encrypted_pem,
-                                                                         password)
+      ssl_crypto__pyca_crypto_keys.create_rsa_public_and_private_from_pem(
+      pem, password)
     public = format_rsakey_from_pem(public)['keyval']['public']
     private = extract_pem(private, private_pem=True)
-  
+
   else: #pragma: no cover
     raise ssl_commons__exceptions.UnsupportedLibraryError('Invalid crypto'
-      ' library: ' + repr(_RSA_CRYPTO_LIBRARY) + '.') 
-    
+      ' library: ' + repr(_RSA_CRYPTO_LIBRARY) + '.')
+
   # Generate the keyid of the RSA key.  'key_value' corresponds to the
   # 'keyval' entry of the 'RSAKEY_SCHEMA' dictionary.  The private key
   # information is not included in the generation of the 'keyid' identifier.
@@ -1453,6 +1455,92 @@ def create_rsa_encrypted_pem(private_key, passphrase):
       ' ' + repr(_RSA_CRYPTO_LIBRARY) + '.')
 
   return encrypted_pem
+
+
+
+
+def is_pem_public(pem):
+  """
+  <Purpose>
+    Checks if a passed PEM formatted string is a PUBLIC key, by looking for the
+    following pattern:
+
+    '-----BEGIN PUBLIC KEY----- ... -----END PUBLIC KEY-----'
+
+    >>> rsa_key = generate_rsa_key()
+    >>> public = rsa_key['keyval']['public']
+    >>> private = rsa_key['keyval']['private']
+    >>> is_pem_public(public)
+    True
+    >>> is_pem_public(private)
+    False
+
+  <Arguments>
+    pem:
+      A string in PEM format.
+
+  <Exceptions>
+      ssl_commons__exceptions.FormatError, if 'pem' is improperly formatted.
+
+  <Side Effects>
+    None
+
+  <Returns>
+    True if 'pem' is public and false otherwise.
+
+  """
+  pem_header = '-----BEGIN PUBLIC KEY-----'
+  pem_footer = '-----END PUBLIC KEY-----'
+  try:
+    header_start = pem.index(pem_header)
+    pem.index(pem_footer, header_start + len(pem_header))
+  except ValueError:
+    return False
+  return True
+
+
+
+
+def is_pem_private(pem):
+  """
+  <Purpose>
+    Checks if a passed PEM formatted string is a PRIVATE key, by looking for the
+    following pattern:
+
+    '-----BEGIN RSA PRIVATE KEY----- ... -----END RSA PRIVATE KEY-----'
+
+    >>> rsa_key = generate_rsa_key()
+    >>> private = rsa_key['keyval']['private']
+    >>> public = rsa_key['keyval']['public']
+    >>> is_pem_private(private)
+    True
+    >>> is_pem_private(public)
+    False
+
+  <Arguments>
+    pem:
+      A string in PEM format.
+
+  <Exceptions>
+    ssl_commons__exceptions.FormatError, if 'pem' is improperly formatted.
+
+  <Side Effects>
+    None
+
+  <Returns>
+    True if 'pem' is private and false otherwise.
+
+  """
+  pem_header = '-----BEGIN RSA PRIVATE KEY-----'
+  pem_footer = '-----END RSA PRIVATE KEY-----'
+  try:
+    header_start = pem.index(pem_header)
+    pem.index(pem_footer, header_start + len(pem_header))
+  except ValueError:
+    return False
+  return True
+
+
 
 
 

@@ -167,7 +167,7 @@ class TestPycrypto_keys(unittest.TestCase):
  
 
 
-  def test_create_rsa_public_and_private_from_encrypted_pem(self):
+  def test_create_rsa_public_and_private_from_pem(self):
     global private_rsa
     passphrase = 'pw'
 
@@ -181,7 +181,7 @@ class TestPycrypto_keys(unittest.TestCase):
     # Decrypt 'pem_rsakey' and verify the decrypted object is properly
     # formatted.
     public_decrypted, private_decrypted = \
-    ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem(pem_rsakey,
+    ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem(pem_rsakey,
                                                              passphrase)
     self.assertEqual(None,
                      ssl_crypto__formats.PEMRSA_SCHEMA.check_match(public_decrypted),
@@ -197,14 +197,14 @@ class TestPycrypto_keys(unittest.TestCase):
 
     # Attempt decryption of 'pem_rsakey' using an incorrect passphrase.
     self.assertRaises(ssl_commons__exceptions.CryptoError,
-                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem,
+                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem,
                       pem_rsakey, 'bad_pw')
 
     # Check for non-encrypted PEM strings.
-    # create_rsa_public_and_private_from_encrypted_pem()
+    # create_rsa_public_and_private_from_pem()
     # returns a tuple of ssl_crypto__formats.PEMRSA_SCHEMA objects if the PEM formatted
     # string is not actually encrypted but still a valid PEM string.
-    pub, priv = ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem(
+    pub, priv = ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem(
                               private_rsa, passphrase)
     self.assertEqual(None, ssl_crypto__formats.PEMRSA_SCHEMA.check_match(pub),
                      FORMAT_ERROR_MSG)
@@ -213,14 +213,14 @@ class TestPycrypto_keys(unittest.TestCase):
 
     # Check for invalid arguments.
     self.assertRaises(ssl_commons__exceptions.FormatError,
-                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem,
+                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem,
                       123, passphrase)
     self.assertRaises(ssl_commons__exceptions.FormatError,
-                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem,
+                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem,
                       pem_rsakey, ['pw'])
     
     self.assertRaises(ssl_commons__exceptions.CryptoError,
-                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_encrypted_pem,
+                      ssl_crypto__pycrypto_keys.create_rsa_public_and_private_from_pem,
                       'invalid_pem', passphrase)
 
 

@@ -20,7 +20,7 @@
   create_rsa_signature()
   verify_rsa_signature()
   create_rsa_encrypted_pem()
-  create_rsa_public_and_private_from_encrypted_pem()
+  create_rsa_public_and_private_from_pem()
 
   The general-purpose functions include:
   encrypt_key()
@@ -491,32 +491,32 @@ def create_rsa_encrypted_pem(private_key, passphrase):
 
 
 
-def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
+def create_rsa_public_and_private_from_pem(pem, passphrase=None):
   """
   <Purpose>
-    Generate public and private RSA keys from an encrypted PEM.
-    The public and private keys returned conform to 'ssl_crypto__formats.PEMRSA_SCHEMA'
-    and have the form:
+    Generate public and private RSA keys from a PEM that can be encrypted.
+    The public and private keys returned conform to
+    'ssl_crypto__formats.PEMRSA_SCHEMA' and have the form:
 
     '-----BEGIN RSA PUBLIC KEY----- ...'
 
     or
 
     '-----BEGIN RSA PRIVATE KEY----- ...'
-    
+
     The public and private keys are returned as strings in PEM format.
 
-    The private key part of 'encrypted_pem' is encrypted.  PyCrypto's importKey
-    method is used, where a passphrase is specified.  PyCrypto uses PBKDF1+MD5
-    to strengthen 'passphrase', and 3DES with CBC mode for encryption/decryption.    
-    Alternatively, key data may be encrypted with AES-CTR-Mode and the passphrase
-    strengthened with PBKDF2+SHA256.
+    In case the private key part of 'pem' is encrypted PyCrypto's importKey
+    method is passed a passphrase.  PyCrypto uses PBKDF1+MD5 to strengthen
+    'passphrase', and 3DES with CBC mode for encryption/decryption.
+    Alternatively, key data may be encrypted with AES-CTR-Mode and the
+    passphrase strengthened with PBKDF2+SHA256.
 
     >>> public, private = generate_rsa_public_and_private(2048)
     >>> passphrase = 'secret'
     >>> encrypted_pem = create_rsa_encrypted_pem(private, passphrase)
     >>> returned_public, returned_private = \
-    create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase)
+    create_rsa_public_and_private_from_pem(encrypted_pem, passphrase)
     >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(returned_public)
     True
     >>> ssl_crypto__formats.PEMRSA_SCHEMA.matches(returned_private)
@@ -525,74 +525,77 @@ def create_rsa_public_and_private_from_encrypted_pem(encrypted_pem, passphrase):
     True
     >>> private == returned_private
     True
-  
+
   <Arguments>
-    encrypted_pem:
-      A byte string in PEM format, where the private key is encrypted.  It has
-      the form:
-      
+    pem:
+      A byte string in PEM format, where the private key can be encrypted.
+      It has the form:
+
       '-----BEGIN RSA PRIVATE KEY-----\n
       Proc-Type: 4,ENCRYPTED\nDEK-Info: DES-EDE3-CBC ...'
 
-    passphrase:
+    passphrase: (optional)
       The passphrase, or password, to decrypt the private part of the RSA
       key.  'passphrase' is not directly used as the encryption key, instead
       it is used to derive a stronger symmetric key.
 
   <Exceptions>
-    ssl_commons__exceptions.FormatError, if the arguments are improperly formatted.
+    ssl_commons__exceptions.FormatError, if the arguments are improperly
+    formatted.
 
-    ssl_commons__exceptions.CryptoError, if the public and private RSA keys cannot be generated
-    from 'encrypted_pem', or exported in PEM format.
+    ssl_commons__exceptions.CryptoError, if the public and private RSA keys
+    cannot be generated from 'pem', or exported in PEM format.
 
   <Side Effects>
     PyCrypto's 'Crypto.PublicKey.RSA.importKey()' called to perform the actual
-    conversion from an encrypted RSA private key.
+    conversion from an (encrypted) RSA private key.
 
   <Returns>
     A (public, private) tuple containing the RSA keys in PEM format.
   """
-  
-  # Does 'encryped_pem' have the correct format?
-  # This check will ensure 'encrypted_pem' has the appropriate number
+
+  # Does 'pem' have the correct format?
+  # This check will ensure 'pem' has the appropriate number
   # of objects and object types, and that all dict keys are properly named.
   # Raise 'ssl_commons__exceptions.FormatError' if the check fails.
-  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(encrypted_pem)
+  ssl_crypto__formats.PEMRSA_SCHEMA.check_match(pem)
 
-  # Does 'passphrase' have the correct format?
-  ssl_crypto__formats.PASSWORD_SCHEMA.check_match(passphrase)
- 
-  # Generate a PyCrypto key object from 'encrypted_pem'.  The generated PyCrypto
+  # If passed, does 'passphrase' have the correct format?
+  if passphrase is not None:
+    ssl_crypto__formats.PASSWORD_SCHEMA.check_match(passphrase)
+
+  # Generate a PyCrypto key object from 'pem'.  The generated PyCrypto
   # key contains the required export methods needed to generate the
   # PEM-formatted representations of the public and private RSA key.
   try:
-    rsa_key_object = Crypto.PublicKey.RSA.importKey(encrypted_pem, passphrase)
- 
+    rsa_key_object = Crypto.PublicKey.RSA.importKey(pem, passphrase)
+
   # PyCrypto's expected exceptions:
   # "ValueError/IndexError/TypeError:  When the given key cannot be parsed
   # (possibly because the passphrase is wrong)."
   # If the passphrase is incorrect, PyCrypto returns: "RSA key format is not
   # supported".
   except (ValueError, IndexError, TypeError) as e:
-    # Raise 'ssl_commons__exceptions.CryptoError' and PyCrypto's exception message.  Avoid
-    # propogating PyCrypto's exception trace to avoid revealing sensitive error.
-    raise ssl_commons__exceptions.CryptoError('RSA (public, private) tuple cannot be generated'
-      ' from the encrypted PEM string: ' + str(e))
-  
+    # Raise 'ssl_commons__exceptions.CryptoError' and PyCrypto's exception
+    # message.  Avoid propogating PyCrypto's exception trace to avoid revealing
+    # sensitive error.
+    raise ssl_commons__exceptions.CryptoError('RSA (public, private) tuple'
+      ' cannot be generated from the encrypted PEM string: ' + str(e))
+
   # Export the public and private halves of the PyCrypto RSA key object.  The
   # (public, private) tuple returned contains the public and private RSA keys
   # in PEM format, as strings.
   try:
-    private = rsa_key_object.exportKey(format='PEM') 
+    private = rsa_key_object.exportKey(format='PEM')
     rsa_pubkey = rsa_key_object.publickey()
     public = rsa_pubkey.exportKey(format='PEM')
- 
+
   # PyCrypto raises 'ValueError' if the public or private keys cannot be
   # exported.  See 'Crypto.PublicKey.RSA'.  'ValueError' should not be raised
   # if the 'Crypto.PublicKey.RSA.importKey() call above passed.
   except (ValueError): #pragma: no cover
-    raise ssl_commons__exceptions.CryptoError('The public and private keys cannot be exported'
-      ' in PEM format.')
+    raise ssl_commons__exceptions.CryptoError('The public and private keys'
+      ' cannot be exported in PEM format.')
 
   return public.decode(), private.decode()
 
