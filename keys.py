@@ -86,7 +86,7 @@ _SUPPORTED_GENERAL_CRYPTO_LIBRARIES = ['pycrypto', 'pyca-cryptography']
 # of the ed25519 python implementation is provided by TUF and avaialable by
 # default.  https://github.com/pyca/ed25519
 _available_crypto_libraries = ['ed25519']
-_available_crypto_libraries = ['ed25519']
+_available_crypto_libraries = ['pyca-cryptography']
 
 
 # Try to import TUF's PyCrypto module (pycrypto_keys.py), which is used here
