@@ -39,6 +39,7 @@
   signatures and verifying them.
 
 
+
   Key IDs are used as identifiers for keys (e.g., RSA key).  They are the
   hexadecimal representation of the hash of the key object (specifically, the
   key object containing only the public key).  Review the '_get_keyid()'
